@@ -1,8 +1,7 @@
-import { router } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome Back!</Text>
@@ -10,7 +9,7 @@ export default function HomeScreen() {
       {/* Button to go to Workout Screen */}
       <TouchableOpacity 
         style={styles.menuButton} 
-        onPress={() => router.push('/(tabs)/workout')} // <--- Navigate to app/workout.tsx
+        onPress={() => navigation.navigate('Workout')}
       >
         <Text style={styles.btnText}>💪 Log Workout</Text>
       </TouchableOpacity>

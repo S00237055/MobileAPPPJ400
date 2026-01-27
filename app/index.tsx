@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert, Button, TextInput } from 'react-native';
 
 export default function LoginScreen() {
   const [username, setUsername] = React.useState('');
@@ -13,7 +13,7 @@ export default function LoginScreen() {
 
     try {
       // Simulate an API call
-      const response = await fetch('http://192.168.1.166:5226/api/Users/login', {
+      const response = await fetch('http://10.10.5.86:5226/api/Users/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
