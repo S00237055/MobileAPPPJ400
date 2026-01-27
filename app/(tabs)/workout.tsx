@@ -4,7 +4,7 @@ import {
   Modal, StyleSheet, Alert, ScrollView 
 } from 'react-native';
 
-// 1. We define what our data looks like for TypeScript
+
 interface Exercise {
   exerciseId: number;
   name: string;
@@ -20,17 +20,17 @@ interface WorkoutSet {
 }
 
 export default function WorkoutScreen() {
-  // 2. We tell useState what kind of data to expect
+ 
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [workoutSets, setWorkoutSets] = useState<WorkoutSet[]>([]);
 
-  // Form State
+  
   const [modalVisible, setModalVisible] = useState(false);
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
 
-  // 3. YOUR IP ADDRESS HERE
+  
   const API_URL = 'http://10.10.5.86:5226/api'; 
   const USER_ID = 1; 
 
@@ -139,7 +139,7 @@ export default function WorkoutScreen() {
         <Text style={styles.btnText}>+ Add Set</Text>
       </TouchableOpacity>
 
-      {/* List of Sets Added So Far */}
+      {/* Sets Added So Far */}
       <ScrollView style={styles.list}>
         {workoutSets.map((set, index) => (
           <View key={index} style={styles.setItem}>
@@ -157,7 +157,7 @@ export default function WorkoutScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Exercise Selection Modal */}
+      {/* Exercise Selection */}
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.header}>Pick an Exercise</Text>
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   setText: { fontSize: 16 },
   modalContainer: { flex: 1, padding: 20, paddingTop: 50, backgroundColor: '#fff' }, // Added white background here
   
-  // THIS WAS MISSING:
+  
   modalItem: { 
     padding: 15, 
     borderBottomWidth: 1, 

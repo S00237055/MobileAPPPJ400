@@ -1,9 +1,13 @@
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { use } from 'react';
 import { View, Text, StyleSheet, Alert, Button, TextInput } from 'react-native';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+
+  const API_URL = 'http://10.10.5.86:5226/api/Users/login';
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -12,8 +16,8 @@ export default function LoginScreen() {
     }
 
     try {
-      // Simulate an API call
-      const response = await fetch('http://10.10.5.86:5226/api/Users/login', {
+      
+      const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -25,9 +29,7 @@ export default function LoginScreen() {
     });
 
     if (!response.ok) {
-      const userData = await response.json();
-      Alert.alert('Success', `Welcome ${userData.name}`);
-      console.log('Login successful:', userData);
+      router.replace('/(tabs)');
     } else {
       Alert.alert('Login failed', 'Invalid username or password');
     }
