@@ -1,13 +1,15 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { View, Text, StyleSheet, Alert, Button, TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 export default function LoginScreen() {
   const router = useRouter();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  const API_URL = 'http://10.20.4.100:5226/api/Users/login';
+  const API_URL = 'http://10.20.4.100:5226/api/User/login';
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -31,7 +33,7 @@ export default function LoginScreen() {
     if (response.ok) {
       const userData = await response.json();
       console.log('Login successful:', userData);
-
+      await AsyncStorage.setItem('userID', userData.userId.toString());
       // navigate to the main app
       router.replace('/(tabs)');
     } else {

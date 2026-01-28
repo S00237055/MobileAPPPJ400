@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, FlatList, 
   Modal, StyleSheet, Alert, ScrollView 
 } from 'react-native';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Exercise {
   exerciseId: number;
@@ -21,6 +21,7 @@ interface WorkoutSet {
 
 export default function WorkoutScreen() {
  
+  const [userId, setUserId] = useState<number | null>(null);
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [workoutSets, setWorkoutSets] = useState<WorkoutSet[]>([]);
@@ -32,11 +33,16 @@ export default function WorkoutScreen() {
 
   
   const API_URL = 'http://10.20.4.100:5226/api'; 
-  const USER_ID = 1; 
+  const USER_ID = 3; 
 
   useEffect(() => {
     fetchExercises();
   }, []);
+
+  const loadUserId = async () => {
+    const id = await AsyncStorage.getItem('userId');
+    if (id) setUserId(parseInt(id));
+  };
 
   const fetchExercises = async () => {
     try {
