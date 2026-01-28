@@ -29,24 +29,32 @@ export default function HistoryScreen() {
   const fetchHistory = async () => {
     try {
       setLoading(true);
+      
       const userIdStr = await AsyncStorage.getItem('userId');
-      if (!userIdStr) {
-        setLoading(false);
-        return; 
-      }
+      if (!userIdStr) { setLoading(false); return; }
       const myUserId = parseInt(userIdStr);
-      const response = await fetch(`${API_URL}/Workouts/${myUserId}`);
+
+      // Fetch all workouts
+      const response = await fetch(`${API_URL}/Workouts`); 
+
       if (!response.ok) {
-    throw new Error("Failed to fetch workouts");
-    }
+        
+        console.log("Server Error Code:", response.status);
+        throw new Error("Failed to fetch");
+      }
+
+      const allWorkouts = await response.json();
+
+      //Filter by my userId
+      const myWorkouts = allWorkouts.filter((w: Workout) => w.userId === myUserId);
       
-      const myWorkouts = await response.json();
-      
+      // Sort by date
       myWorkouts.sort((a: Workout, b: Workout) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
       setWorkouts(myWorkouts);
       setLoading(false);
     } catch (error) {
-        console.log("HISTORY ERROR:", error);
+      console.log("HISTORY ERROR:", error);
       Alert.alert("Error", "Could not load history");
       setLoading(false);
     }
