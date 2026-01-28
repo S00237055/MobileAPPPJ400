@@ -33,9 +33,9 @@ export default function LoginScreen() {
     if (response.ok) {
       const userData = await response.json();
       console.log('Login successful:', userData);
-      await AsyncStorage.setItem('userID', userData.userId.toString());
+      await AsyncStorage.setItem('userId', userData.userId.toString());
       // navigate to the main app
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/workout');
     } else {
       Alert.alert('Login failed', 'Invalid username or password');
     }

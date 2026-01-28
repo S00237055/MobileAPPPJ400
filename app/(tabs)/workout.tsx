@@ -37,6 +37,7 @@ export default function WorkoutScreen() {
 
   useEffect(() => {
     fetchExercises();
+    loadUserId();
   }, []);
 
   const loadUserId = async () => {
@@ -74,10 +75,17 @@ export default function WorkoutScreen() {
   };
 
   const handleFinishWorkout = async () => {
+    
+    if (!userId) {
+        Alert.alert("Error", "You are not logged in!");
+        return;
+    }
+    
     if (workoutSets.length === 0) return;
 
+    
     const payload = {
-      userId: USER_ID,
+      userId: userId,
       date: new Date().toISOString(),
       notes: "Logged from Mobile App",
       workoutSets: workoutSets.map(s => ({
