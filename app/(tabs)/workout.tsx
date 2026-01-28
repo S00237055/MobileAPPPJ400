@@ -31,7 +31,7 @@ export default function WorkoutScreen() {
   const [reps, setReps] = useState('');
 
   
-  const API_URL = 'http://10.10.5.86:5226/api'; 
+  const API_URL = 'http://10.20.4.100:5226/api'; 
   const USER_ID = 1; 
 
   useEffect(() => {

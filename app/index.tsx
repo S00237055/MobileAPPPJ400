@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { use } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Alert, Button, TextInput } from 'react-native';
 
 export default function LoginScreen() {
@@ -7,7 +7,7 @@ export default function LoginScreen() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  const API_URL = 'http://10.10.5.86:5226/api/Users/login';
+  const API_URL = 'http://10.20.4.100:5226/api/Users/login';
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -28,7 +28,11 @@ export default function LoginScreen() {
       }),
     });
 
-    if (!response.ok) {
+    if (response.ok) {
+      const userData = await response.json();
+      console.log('Login successful:', userData);
+
+      // navigate to the main app
       router.replace('/(tabs)');
     } else {
       Alert.alert('Login failed', 'Invalid username or password');
