@@ -31,6 +31,9 @@ export default function WorkoutScreen() {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
 
+  // Timer
+  const [timer, setTimer] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
   
   const API_URL = 'http://10.20.4.100:5226/api'; 
   const USER_ID = 3; 
@@ -39,6 +42,23 @@ export default function WorkoutScreen() {
     fetchExercises();
     loadUserId();
   }, []);
+
+  useEffect(() => {
+  let interval: any;
+  if (isTimerRunning) {
+    interval = setInterval(() => {
+      setTimer((prev) => prev + 1);
+    }, 1000);
+  }
+  return () => clearInterval(interval); // Cleanup when stopped
+}, [isTimerRunning]);
+
+// Helper to format 0 to 00:00
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
 
   const loadUserId = async () => {
     const id = await AsyncStorage.getItem('userId');
@@ -80,7 +100,7 @@ export default function WorkoutScreen() {
         Alert.alert("Error", "You are not logged in!");
         return;
     }
-    
+
     if (workoutSets.length === 0) return;
 
     
@@ -119,6 +139,26 @@ export default function WorkoutScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Log Workout</Text>
+
+        {/* REST TIMER */}
+      <View style={styles.timerContainer}>
+        <Text style={styles.timerText}>{formatTime(timer)}</Text>
+        <View style={styles.timerControls}>
+          <TouchableOpacity 
+            style={[styles.timerBtn, isTimerRunning ? styles.stopBtn : styles.startBtn]} 
+            onPress={() => setIsTimerRunning(!isTimerRunning)}
+          >
+            <Text style={styles.timerBtnText}>{isTimerRunning ? "Stop" : "Start"}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.timerBtn, styles.resetBtn]} 
+            onPress={() => { setIsTimerRunning(false); setTimer(0); }}
+          >
+            <Text style={styles.timerBtnText}>Reset</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Exercise Selector */}
       <TouchableOpacity 
@@ -241,5 +281,17 @@ const styles = StyleSheet.create({
   subText: { color: '#666' },
   closeButton: { 
     backgroundColor: '#FF3B30', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 20 
-  }
+  },
+
+  timerContainer: { 
+    alignItems: 'center', marginBottom: 20, padding: 15, 
+    backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#ddd' 
+  },
+  timerText: { fontSize: 32, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 10 },
+  timerControls: { flexDirection: 'row', gap: 15 },
+  timerBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20 },
+  startBtn: { backgroundColor: '#34C759' }, // Green
+  stopBtn: { backgroundColor: '#FF9500' },   // Orange
+  resetBtn: { backgroundColor: '#8E8E93' },  // Grey
+  timerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
 });
