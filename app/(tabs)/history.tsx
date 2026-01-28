@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 
@@ -21,6 +21,8 @@ interface Workout {
 export default function HistoryScreen() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
   const API_URL = 'http://10.20.4.100:5226/api'; 
 
   useFocusEffect(
@@ -55,6 +57,7 @@ export default function HistoryScreen() {
       myWorkouts.sort((a: Workout, b: Workout) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setWorkouts(myWorkouts);
+      setFilteredWorkouts(myWorkouts);
       setLoading(false);
     } catch (error) {
       console.log("HISTORY ERROR:", error);
@@ -79,15 +82,37 @@ export default function HistoryScreen() {
     </View>
   );
 
+  const handleSearch = (text: string) => {
+    setSearchText(text);
+    if (text) {
+        const filtered = workouts.filter(w => 
+        
+        w.notes?.toLowerCase().includes(text.toLowerCase()) ||
+        w.workoutSets.some(set => set.exercise?.name.toLowerCase().includes(text.toLowerCase()))
+        );
+        setFilteredWorkouts(filtered);
+    } else {
+        // If empty, show everything
+        setFilteredWorkouts(workouts);
+    }
+    };
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Workout History</Text>
       
+      <TextInput 
+        style={styles.searchBar} 
+        placeholder="Search (e.g., Bench Press)" 
+        value={searchText}
+        onChangeText={handleSearch}
+        />
+
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" />
       ) : (
         <FlatList
-          data={workouts}
+          data={filteredWorkouts}
           keyExtractor={(item) => item.workoutId.toString()}
           renderItem={renderWorkout}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -106,5 +131,6 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   setText: { fontSize: 15, color: '#444', marginBottom: 4 },
   notes: { fontStyle: 'italic', color: '#666', marginTop: 8, fontSize: 14 },
-  emptyText: { textAlign: 'center', marginTop: 50, color: '#888', fontSize: 16 }
+  emptyText: { textAlign: 'center', marginTop: 50, color: '#888', fontSize: 16 },
+  searchBar: { backgroundColor: '#fff', padding: 12, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ddd', fontSize: 16},
 });
