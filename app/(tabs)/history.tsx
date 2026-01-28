@@ -9,9 +9,12 @@ interface Workout {
   date: string;
   notes: string;
   workoutSets: {
-    exerciseName: string;
+    
     weightKg: number;
     reps: number;
+    exercise?: {
+        name: string;
+    };
   }[];
 }
 
@@ -69,7 +72,7 @@ export default function HistoryScreen() {
       </View>
       {item.workoutSets.map((set, index) => (
         <Text key={index} style={styles.setText}>
-          • {set.exerciseName}: {set.weightKg}kg x {set.reps}
+          • {set.exercise?.name || "Unknown Exercise"}: {set.weightKg}kg x {set.reps}
         </Text>
       ))}
       {item.notes && <Text style={styles.notes}>📝😂 {item.notes}</Text>}
