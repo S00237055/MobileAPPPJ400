@@ -35,6 +35,8 @@ export default function WorkoutScreen() {
   const [timer, setTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   
+  const [exerciseSearch, setExerciseSearch] = useState('');
+
   const API_URL = 'http://10.20.4.100:5226/api'; 
   const USER_ID = 3; 
 
@@ -215,8 +217,17 @@ const formatTime = (seconds: number) => {
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.header}>Pick an Exercise</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="Search exercises..." 
+            value={exerciseSearch}
+            onChangeText={setExerciseSearch}
+          />
+
           <FlatList
-            data={availableExercises}
+            data={availableExercises.filter(ex =>
+              ex.name.toLowerCase().includes(exerciseSearch.toLowerCase()) 
+            )}
             keyExtractor={(item) => item.exerciseId.toString()}
             renderItem={({ item }) => (
               <TouchableOpacity 
@@ -224,6 +235,7 @@ const formatTime = (seconds: number) => {
                 onPress={() => {
                   setSelectedExercise(item);
                   setModalVisible(false);
+                  setExerciseSearch('');
                 }}
               >
                 <Text style={styles.modalText}>{item.name}</Text>
@@ -233,7 +245,10 @@ const formatTime = (seconds: number) => {
           />
           <TouchableOpacity 
             style={styles.closeButton} 
-            onPress={() => setModalVisible(false)}
+            onPress={() => {
+              setModalVisible(false);
+              setExerciseSearch('');
+            }}
           >
             <Text style={styles.btnText}>Close</Text>
           </TouchableOpacity>
