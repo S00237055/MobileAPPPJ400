@@ -9,6 +9,7 @@ interface Exercise {
   exerciseId: number;
   name: string;
   bodyPart: string;
+  description?: string;
 }
 
 interface WorkoutSet {
@@ -37,6 +38,7 @@ export default function WorkoutScreen() {
   
   const [exerciseSearch, setExerciseSearch] = useState('');
 
+  const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
   const API_URL = 'http://10.20.4.100:5226/api'; 
   const USER_ID = 3; 
 
@@ -216,42 +218,79 @@ const formatTime = (seconds: number) => {
       {/* Exercise Selection */}
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.modalContainer}>
-          <Text style={styles.header}>Pick an Exercise</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder="Search exercises..." 
-            value={exerciseSearch}
-            onChangeText={setExerciseSearch}
-          />
+          
+          
+          {!viewingExercise ? (
+            <>
+              <Text style={styles.header}>Pick an Exercise</Text>
+              
+              {/* SEARCH BAR */}
+              <TextInput 
+                style={styles.input} 
+                placeholder="Search exercises..." 
+                value={exerciseSearch}
+                onChangeText={setExerciseSearch}
+              />
 
-          <FlatList
-            data={availableExercises.filter(ex =>
-              ex.name.toLowerCase().includes(exerciseSearch.toLowerCase()) 
-            )}
-            keyExtractor={(item) => item.exerciseId.toString()}
-            renderItem={({ item }) => (
+              <FlatList
+                data={availableExercises.filter(ex => 
+                  ex.name.toLowerCase().includes(exerciseSearch.toLowerCase())
+                )}
+                keyExtractor={(item) => item.exerciseId.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.modalItem}
+                    
+                    onPress={() => setViewingExercise(item)}
+                  >
+                    <Text style={styles.modalText}>{item.name}</Text>
+                    <Text style={styles.subText}>{item.bodyPart} • Tap for Info</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              
               <TouchableOpacity 
-                style={styles.modalItem}
+                style={styles.closeButton} 
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.btnText}>Close</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            
+            // STATE 2: SHOW THE "HOW TO" PAGE
+            <View style={styles.detailsContainer}>
+              <Text style={styles.header}>{viewingExercise.name}</Text>
+              <Text style={styles.subHeader}>Target: {viewingExercise.bodyPart}</Text>
+              
+              <View style={styles.instructionBox}>
+                <Text style={styles.instructionTitle}>How to do it:</Text>
+                <Text style={styles.instructionText}>
+                  {viewingExercise.description || "No instructions available for this exercise yet."}
+                </Text>
+              </View>
+
+              {/* ACTION BUTTONS */}
+              <TouchableOpacity 
+                style={styles.selectButton} 
                 onPress={() => {
-                  setSelectedExercise(item);
-                  setModalVisible(false);
+                  setSelectedExercise(viewingExercise); 
+                  setViewingExercise(null);             
+                  setModalVisible(false);               
                   setExerciseSearch('');
                 }}
               >
-                <Text style={styles.modalText}>{item.name}</Text>
-                <Text style={styles.subText}>{item.bodyPart}</Text>
+                <Text style={styles.btnText}>Select This Exercise</Text>
               </TouchableOpacity>
-            )}
-          />
-          <TouchableOpacity 
-            style={styles.closeButton} 
-            onPress={() => {
-              setModalVisible(false);
-              setExerciseSearch('');
-            }}
-          >
-            <Text style={styles.btnText}>Close</Text>
-          </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.backButton} 
+                onPress={() => setViewingExercise(null)} 
+              >
+                <Text style={styles.backBtnText}>Back to List</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </Modal>
     </View>
@@ -309,4 +348,20 @@ const styles = StyleSheet.create({
   stopBtn: { backgroundColor: '#FF9500' },   // Orange
   resetBtn: { backgroundColor: '#8E8E93' },  // Grey
   timerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  
+  detailsContainer: { flex: 1 },
+  subHeader: { fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 20 },
+  instructionBox: { 
+    backgroundColor: '#f9f9f9', padding: 20, borderRadius: 10, marginVertical: 10,
+    borderWidth: 1, borderColor: '#eee'
+  },
+  instructionTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 10 },
+  instructionText: { fontSize: 16, lineHeight: 24, color: '#333' },
+  selectButton: { 
+    backgroundColor: '#007AFF', padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 30 
+  },
+  backButton: { 
+    padding: 15, alignItems: 'center', marginTop: 10 
+  },
+  backBtnText: { color: '#007AFF', fontSize: 16 },
 });
