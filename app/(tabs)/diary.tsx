@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 
 interface SavedFoodLog {
   logId: number;
@@ -16,6 +16,9 @@ export default function DiaryScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('Daily');
+  //AI Advice State
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -68,9 +71,55 @@ export default function DiaryScreen() {
   const totalCalories = filteredLogs.reduce((sum, log) => sum + log.calories, 0);
   const totalProtein = filteredLogs.reduce((sum, log) => sum + log.proteinGrams, 0);
 
+  const getAiDietAdvice = async () => {
+    if (filteredLogs.length === 0) {
+      Alert.alert("No Food", "Log some food first so the AI has something to analyze!");
+      return;
+    }
+
+    
+
+    setAiLoading(true);
+    setAiAdvice(null);
+
+   
+    const foodList = filteredLogs.map(log => log.foodName).join(', ');
+    
+    
+    const prompt = `I am tracking my nutrition. Today I ate: ${foodList}. My total intake is ${totalCalories} calories and ${totalProtein}g of protein. In 2 short sentences, tell me how I can improve this diet for better health and muscle growth.`;
+
+    try {
+    
+      /*
+      const response = await fetch('http://localhost:5226/api/Ai/DietAdvice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+      });
+      const data = await response.json();
+      setAiAdvice(data.advice);
+      */
+     // AI RESPONSE FOR TESTING
+      
+      setTimeout(() => {
+        if (totalProtein < 50) {
+          setAiAdvice("🤖 AI Tip: Your protein is a bit low for muscle growth! Try adding lean meats, eggs, or a protein shake to your next meal to hit your goals.");
+        } else {
+          setAiAdvice("🤖 AI Tip: Great job hitting your protein goals! Make sure you're also getting enough fiber from fruits and vegetables to balance out your diet.");
+        }
+        setAiLoading(false);
+      }, 2000); // Fakes a 2-second loading time
+
+    } catch (error) {
+      Alert.alert("AI Error", "Could not get advice right now.");
+      setAiLoading(false);
+    }
+  };
+
   const renderLog = ({ item }: { item: SavedFoodLog }) => {
     const dateEaten = new Date(item.dateEaten).toLocaleDateString();
     const timeEaten = new Date(item.dateEaten).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
 
     return (
       <View style={styles.card}>
@@ -125,6 +174,23 @@ export default function DiaryScreen() {
         </View>
       </View>
 
+      <View style={styles.aiContainer}>
+        <TouchableOpacity 
+          style={styles.aiButton} 
+          onPress={getAiDietAdvice}
+          disabled={aiLoading}
+        >
+          <Text style={styles.aiButtonText}>✨ Get AI Diet Advice ✨</Text>
+        </TouchableOpacity>
+
+        {aiLoading && <ActivityIndicator size="small" color="#8A2BE2" style={{ marginTop: 10 }} />}
+        
+        {aiAdvice && (
+          <View style={styles.aiAdviceBox}>
+            <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
+          </View>
+        )}
+      </View>
       
       {loading ? (
         <ActivityIndicator size="large" color="#FF9500" style={styles.loader} />
@@ -163,6 +229,12 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   summaryValue: { fontSize: 24, fontWeight: 'bold', color: '#333' },
   summaryUnit: { fontSize: 14, fontWeight: 'normal', color: '#666' },
+
+  aiContainer: { marginBottom: 20, alignItems: 'center' },
+  aiButton: { backgroundColor: '#8A2BE2', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25 },
+  aiButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  aiAdviceBox: { marginTop: 15, backgroundColor: '#f0e6ff', padding: 15, borderRadius: 10, maxWidth: '100%' },
+  aiAdviceText: { color: '#5a189a', fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
 
   loader: { marginTop: 50 },
   errorText: { color: 'red', textAlign: 'center', marginTop: 20 },
