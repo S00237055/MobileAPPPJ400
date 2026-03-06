@@ -7,7 +7,8 @@ import {
   FlatList, 
   ActivityIndicator, 
   StyleSheet, 
-  Keyboard 
+  Keyboard,
+  Alert
 } from 'react-native';
 
 export default function NutritionScreen() {
@@ -43,6 +44,41 @@ export default function NutritionScreen() {
     }
   };
 
+  const saveToDatabase = async (item: any) => {
+    
+    const foodName = item.product_name || 'Unknown Product';
+    const calories = parseInt(item.nutriments?.['energy-kcal_100g']) || 0;
+    const protein = parseFloat(item.nutriments?.proteins_100g) || 0;
+
+    
+    const payload = {
+      userId: 1, // Change this to the ID of the logged-in user!
+      foodName: foodName,
+      calories: calories,
+      proteinGrams: protein
+    };
+
+    try {
+      
+      const response = await fetch('http://localhost:5226/api/FoodLogs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        Alert.alert('Success!', `${foodName} has been saved to your diary.`);
+      } else {
+        Alert.alert('Error', 'Failed to save food to database.');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Network Error', 'Could not connect to the Fitness API.');
+    }
+  };
+
   const renderItem = ({ item }: any) => {
    
     const energy = item.nutriments?.['energy-kcal_100g'] || 'N/A';
@@ -63,7 +99,9 @@ export default function NutritionScreen() {
         </View>
 
         
-        {/* <Button title="Save to My Meals" onPress={() => saveToDatabase(item)} /> */}
+        <View style={{ marginTop: 12 }}>
+          <Button title="Save to Diary" color="#28a745" onPress={() => saveToDatabase(item)} />
+        </View>
       </View>
     );
   };
