@@ -8,14 +8,31 @@ import {
   ActivityIndicator, 
   StyleSheet, 
   Keyboard,
-  Alert
+  Alert,
+  TouchableOpacity
 } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+
+interface FoodItem {
+  id: string;
+  product_name?: string;
+  brands?: string;
+  nutriments?: {
+    'energy-kcal_100g'?: number;
+    proteins_100g?: number;
+    carbohydrates_100g?: number;
+    fat_100g?: number;
+  };
+}
 
 export default function NutritionScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [nutritionData, setNutritionData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isScanning, setIsScanning] = useState(false);
 
   const fetchNutritionData = async () => {
     if (!searchQuery.trim()) return;
@@ -42,6 +59,47 @@ export default function NutritionScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchBarcodeData = async (barcode: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Open Food Facts has a specific URL just for barcodes!
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await response.json();
+      
+      if (data.status === 1 && data.product) {
+        const product = data.product;
+        if (!product.id) product.id = barcode; // Ensure flatlist key works
+        setNutritionData([product]);
+      } else {
+        setNutritionData([]);
+        setError('Barcode not found in the food database.');
+      }
+    } catch (err) {
+      setError('Failed to fetch barcode data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- CAMERA LOGIC ---
+  const startScan = async () => {
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        Alert.alert('Permission Denied', 'Camera access is required to scan barcodes.');
+        return;
+      }
+    }
+    setIsScanning(true);
+  };
+
+  const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
+    setIsScanning(false); // Close camera
+    setSearchQuery(data); // Put the barcode numbers in the text box
+    fetchBarcodeData(data); // Instantly search for the food
   };
 
   const saveToDatabase = async (item: any) => {
@@ -78,6 +136,26 @@ export default function NutritionScreen() {
       Alert.alert('Network Error', 'Could not connect to the Fitness API.');
     }
   };
+
+  if (isScanning) {
+    return (
+      <View style={styles.cameraContainer}>
+        <CameraView
+          style={StyleSheet.absoluteFillObject}
+          barcodeScannerSettings={{
+            barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "qr"], // Standard food barcode types
+          }}
+          onBarcodeScanned={handleBarCodeScanned}
+        />
+        <View style={styles.cameraOverlay}>
+            <Text style={styles.cameraText}>Point camera at a food barcode</Text>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setIsScanning(false)}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   const renderItem = ({ item }: any) => {
    
@@ -119,6 +197,9 @@ export default function NutritionScreen() {
           onSubmitEditing={fetchNutritionData}
           placeholderTextColor="#888"
         />
+        <TouchableOpacity style={styles.iconButton} onPress={startScan}>
+          <Text style={{ fontSize: 24 }}>📷</Text>
+        </TouchableOpacity>
         <Button title="Search" onPress={fetchNutritionData} />
       </View>
 
@@ -170,6 +251,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
     color: '#000',
   },
+  iconButton: { 
+    paddingHorizontal: 10, 
+    marginRight: 5, 
+    justifyContent: 'center' 
+    },
   loader: {
     marginTop: 20,
   },
@@ -222,4 +308,9 @@ const styles = StyleSheet.create({
     color: '#444',
     marginBottom: 2,
   },
+  cameraContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'black' },
+  cameraOverlay: { position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center' },
+  cameraText: { color: 'white', fontSize: 18, marginBottom: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8, overflow: 'hidden' },
+  cancelButton: { backgroundColor: '#ff3b30', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  cancelButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
 });
