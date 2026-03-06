@@ -23,7 +23,7 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
 const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
-  const API_URL = 'http://10.20.4.100:5226/api'; 
+  const API_URL = 'http://localhost:5226/api'; 
 
   useFocusEffect(
     useCallback(() => {

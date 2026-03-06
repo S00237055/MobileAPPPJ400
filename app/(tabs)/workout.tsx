@@ -39,7 +39,7 @@ export default function WorkoutScreen() {
   const [exerciseSearch, setExerciseSearch] = useState('');
 
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
-  const API_URL = 'http://10.20.4.100:5226/api'; 
+  const API_URL = 'http://localhost:5226/api'; 
   const USER_ID = 3; 
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function WorkoutScreen() {
   return () => clearInterval(interval); // Cleanup when stopped
 }, [isTimerRunning]);
 
-// Helper to format 0 to 00:00
+
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -258,7 +258,7 @@ const formatTime = (seconds: number) => {
             </>
           ) : (
             
-            // STATE 2: SHOW THE "HOW TO" PAGE
+            
             <View style={styles.detailsContainer}>
               <Text style={styles.header}>{viewingExercise.name}</Text>
               <Text style={styles.subHeader}>Target: {viewingExercise.bodyPart}</Text>
