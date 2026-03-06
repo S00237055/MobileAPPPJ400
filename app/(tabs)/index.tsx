@@ -18,7 +18,7 @@ export default function HomeScreen() {
       {/* Placeholder for Food Log */}
       <TouchableOpacity 
         style={[styles.menuButton, { backgroundColor: '#FF9500' }]} 
-        onPress={() => alert('Coming Soon!')}
+        onPress={() => router.push('/(tabs)/nutrition')}
       >
         <Text style={styles.btnText}>🍎 Log Food</Text>
       </TouchableOpacity>
