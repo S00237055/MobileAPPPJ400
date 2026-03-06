@@ -90,28 +90,27 @@ export default function DiaryScreen() {
 
     try {
     
-      /*
+      
       const response = await fetch('http://localhost:5226/api/Ai/DietAdvice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: prompt })
       });
-      const data = await response.json();
-      setAiAdvice(data.advice);
-      */
-     // AI RESPONSE FOR TESTING
       
-      setTimeout(() => {
-        if (totalProtein < 50) {
-          setAiAdvice("🤖 AI Tip: Your protein is a bit low for muscle growth! Try adding lean meats, eggs, or a protein shake to your next meal to hit your goals.");
-        } else {
-          setAiAdvice("🤖 AI Tip: Great job hitting your protein goals! Make sure you're also getting enough fiber from fruits and vegetables to balance out your diet.");
-        }
-        setAiLoading(false);
-      }, 2000); // Fakes a 2-second loading time
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("BACKEND ERROR:", errorText); 
+        throw new Error(errorText);
+      }
 
-    } catch (error) {
-      Alert.alert("AI Error", "Could not get advice right now.");
+     
+      const data = await response.json();
+      
+      
+      setAiAdvice(data.advice);
+
+    } catch (error: any) {
+      Alert.alert("AI Error", error.message || "Could not get advice right now.");
       setAiLoading(false);
     }
   };

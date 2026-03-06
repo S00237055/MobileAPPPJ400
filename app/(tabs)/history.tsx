@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 
@@ -23,6 +23,10 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
 const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
+
+const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   const API_URL = 'http://localhost:5226/api'; 
 
   useFocusEffect(
@@ -66,6 +70,50 @@ const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
     }
   };
 
+  const getAiWorkoutAdvice = async () => {
+    if (filteredWorkouts.length === 0) {
+      Alert.alert("No Workouts", "Log some workouts first so the AI can analyze your progress!");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiAdvice(null);
+
+    // Grab the 5 most recent workouts so the prompt isn't too massive
+    const recentWorkouts = filteredWorkouts.slice(0, 5);
+    
+    // Format them into a text string for the AI to read
+    let workoutSummary = recentWorkouts.map(w => {
+        let setsStr = w.workoutSets.map(s => `${s.exercise?.name || 'Unknown'}: ${s.weightKg}kg x ${s.reps}`).join(', ');
+        return `Date: ${new Date(w.date).toLocaleDateString()}. Exercises: ${setsStr}. Notes: ${w.notes || 'None'}`;
+    }).join('\n');
+
+    const prompt = `I am tracking my gym workouts. Here are my most recent sessions:\n${workoutSummary}\nAct as an expert personal trainer. In 2 or 3 short sentences, analyze my routine and give me a specific tip to improve my strength, form, or workout split.`;
+
+    try {
+      const response = await fetch(`${API_URL}/Ai/WorkoutAdvice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText);
+      }
+
+      const data = await response.json();
+      setAiAdvice(data.advice);
+
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert("AI Error", "Could not connect to the AI service right now.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  
   const renderWorkout = ({ item }: { item: Workout }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -108,6 +156,23 @@ const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
         onChangeText={handleSearch}
         />
 
+      <View style={styles.aiContainer}>
+        <TouchableOpacity 
+          style={styles.aiButton} 
+          onPress={getAiWorkoutAdvice}
+          disabled={aiLoading}
+        >
+          <Text style={styles.aiButtonText}>💪 Get AI Trainer Advice 💪</Text>
+        </TouchableOpacity>
+        {aiLoading && <ActivityIndicator size="small" color="#007AFF" style={{ marginTop: 10 }} />}
+        
+        {aiAdvice && (
+          <View style={styles.aiAdviceBox}>
+            <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
+          </View>
+        )}
+      </View>
+
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" />
       ) : (
@@ -126,6 +191,15 @@ const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 50, backgroundColor: '#f5f5f5' },
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+
+
+  aiContainer: { marginBottom: 20, alignItems: 'center' },
+  aiButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 4 },
+  aiButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  aiAdviceBox: { marginTop: 15, backgroundColor: '#e6f2ff', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#b3d9ff', width: '100%' },
+  aiAdviceText: { color: '#004080', fontSize: 15, lineHeight: 22, fontStyle: 'italic', textAlign: 'center' },
+
+
   card: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 15, elevation: 2 },
   cardHeader: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 10, marginBottom: 10 },
   dateText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
