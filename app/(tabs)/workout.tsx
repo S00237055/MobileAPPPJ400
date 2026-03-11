@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, FlatList, 
-  Modal, StyleSheet, Alert, ScrollView 
+  Modal, StyleSheet, Alert, ScrollView, 
+  Button
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 
 interface Exercise {
   exerciseId: number;
@@ -42,8 +44,17 @@ export default function WorkoutScreen() {
   const API_URL = 'http://localhost:5226/api'; 
   const USER_ID = 3; 
 
-  
+  const handleLogout = async () => {
+    try{
+      await AsyncStorage.removeItem('userId');
+      router.replace('/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+    
+  };
 
+  
   useEffect(() => {
     fetchExercises();
     loadUserId();
@@ -295,6 +306,9 @@ const formatTime = (seconds: number) => {
           )}
         </View>
       </Modal>
+      <View style={{ marginTop: 40 }}>
+        <Button title="Logout" onPress={handleLogout} color="#ff3b30" />
+      </View>
     </View>
   );
 }
@@ -324,6 +338,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 5, borderLeftColor: '#007AFF' 
   },
   setText: { fontSize: 16 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   modalContainer: { flex: 1, padding: 20, paddingTop: 50, backgroundColor: '#fff' }, // Added white background here
   
   

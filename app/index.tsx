@@ -1,97 +1,38 @@
+import { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { View, Text, StyleSheet, Alert, Button, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-export default function LoginScreen() {
+export default function AuthGateway() {
   const router = useRouter();
-  
-  const [username, setUsername] = React.useState('');
-  const [password, setPassword] = React.useState('');
 
-  const API_URL = 'http://localhost:5226/api/User/login';
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        
+        const userId = await AsyncStorage.getItem('userId');
+        
+        if (userId) {
+          
+          router.replace('/(tabs)/workout'); 
+        } else {
+          
+          router.replace('/login');
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+        router.replace('/login');
+      }
+    };
 
-  const handleLogin = async () => {
-    if (!username || !password) {
-      alert('Please enter both username and password');
-      return;
-    }
+    
+    checkUserStatus();
+  }, []);
 
-    try {
-      
-      const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        username: username, 
-        password: password,
-      }),
-    });
-
-    if (response.ok) {
-      const userData = await response.json();
-      console.log('Login successful:', userData);
-      await AsyncStorage.setItem('userId', userData.userId.toString());
-      // navigate to the main app
-      router.replace('/(tabs)/workout');
-    } else {
-      Alert.alert('Login failed', 'Invalid username or password');
-    }
-    } catch (error) {
-      console.error('Error during login:', error);
-      Alert.alert('Error', 'An error occurred during login. Please try again later.');
-    }
-  };
-
+ 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Fitness App Login</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <Button title="Login" onPress={handleLogin} />
-      <View style={{ marginTop: 20 }}>
-          <Button title="Go to Register" onPress={() => router.push('/register')} color="#0a7ea4" />
-      </View>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <ActivityIndicator size="large" color="#0a7ea4" />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    padding: 20, 
-    backgroundColor: '#fff' 
-  },
-  title: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 20, 
-    textAlign: 'center' 
-  },
-  input: { 
-    borderWidth: 1, 
-    borderColor: '#ccc', 
-    padding: 10, 
-    marginBottom: 15, 
-    borderRadius: 5 
-  }
-});
