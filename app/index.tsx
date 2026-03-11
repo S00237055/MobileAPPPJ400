@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
+  
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
@@ -66,6 +67,9 @@ export default function LoginScreen() {
       />
 
       <Button title="Login" onPress={handleLogin} />
+      <View style={{ marginTop: 20 }}>
+          <Button title="Go to Register" onPress={() => router.push('/register')} color="#0a7ea4" />
+      </View>
     </View>
   );
 }

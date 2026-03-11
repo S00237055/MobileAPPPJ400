@@ -42,6 +42,8 @@ export default function WorkoutScreen() {
   const API_URL = 'http://localhost:5226/api'; 
   const USER_ID = 3; 
 
+  
+
   useEffect(() => {
     fetchExercises();
     loadUserId();
