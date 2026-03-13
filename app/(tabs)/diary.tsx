@@ -9,17 +9,19 @@ interface SavedFoodLog {
   dateEaten: string;
 }
 
-type Period = 'Daily' | 'Weekly' | 'Monthly';
+type Period = 'Daily' | 'Weekly' | 'Monthly' | 'Compare';
 
 export default function DiaryScreen() {
   const [logs, setLogs] = useState<SavedFoodLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('Daily');
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = previous week, etc.
   //AI Advice State
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  
   const fetchHistory = async () => {
     setLoading(true);
     setError(null);
@@ -50,7 +52,8 @@ export default function DiaryScreen() {
     // Start of today
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     // Start of the week
-    const startOfWeek = startOfToday - (6 * 24 * 60 * 60 * 1000);
+    const startOfWeekTarget = startOfToday - (weekOffset * 7 * 24 * 60 * 60 * 1000) + (924 * 60 * 60 * 1000 - 1); // Adjust for timezone to ensure we get the correct week
+    const endOfWeekTarget = startOfWeekTarget + (6 * 24 * 60 * 60 * 1000); // End of the week
     // Start of the current month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
@@ -58,7 +61,7 @@ export default function DiaryScreen() {
       const logTime = new Date(log.dateEaten).getTime();
       
       if (selectedPeriod === 'Daily') return logTime >= startOfToday;
-      if (selectedPeriod === 'Weekly') return logTime >= startOfWeek;
+      if (selectedPeriod === 'Weekly') return logTime >= startOfWeekTarget && logTime <= endOfWeekTarget;
       if (selectedPeriod === 'Monthly') return logTime >= startOfMonth;
       
       return true;
@@ -66,6 +69,34 @@ export default function DiaryScreen() {
   };
 
   const filteredLogs = getFilteredLogs();
+
+  const getWeeklyComparisons = () => {
+    const weeklyData: Record<string, { weekStart: string, calories: number, protein: number }> ={};
+      
+      logs.forEach(log => {
+        const date = new Date(log.dateEaten);
+
+        const day = date.getDay() || 7;
+        date.setHours(-24 * (day -1), 0, 0, 0);
+        const weekStart = date.toLocaleDateString();
+
+        if (!weeklyData[weekStart]) {
+          weeklyData[weekStart] = { weekStart, calories: 0, protein: 0 };
+        }
+
+        weeklyData[weekStart].calories += log.calories;
+        weeklyData[weekStart].protein += log.proteinGrams;
+      });
+
+      return Object.values(weeklyData).sort((a, b) => 
+        new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
+      );
+    };
+
+    const weeklyComparisons = getWeeklyComparisons();
+  
+
+  
 
   //SUMMARY
   const totalCalories = filteredLogs.reduce((sum, log) => sum + log.calories, 0);
@@ -134,6 +165,18 @@ export default function DiaryScreen() {
     );
   };
 
+  const renderComparisonCard = ({ item }: { item: { weekStart: string, calories: number, protein: number } }) => (
+    <View style={[styles.card, { borderLeftColor: '#8A2BE2' }]}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.foodName}>Week of {item.weekStart}</Text>
+      </View>
+      <View style={styles.macroContainer}>
+        <Text style={styles.macroText}>🔥 Total: {item.calories} kcal</Text>
+        <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
@@ -145,7 +188,7 @@ export default function DiaryScreen() {
 
       {/*PERIOD BUTTONS*/}
       <View style={styles.toggleContainer}>
-        {(['Daily', 'Weekly', 'Monthly'] as Period[]).map((period) => (
+        {(['Daily', 'Weekly', 'Monthly', 'Compare'] as Period[]).map((period) => (
           <TouchableOpacity
             key={period}
             style={[styles.toggleButton, selectedPeriod === period && styles.toggleButtonActive]}
@@ -157,6 +200,28 @@ export default function DiaryScreen() {
           </TouchableOpacity>
         ))}
       </View>
+      {/*Weekly Navigation*/}
+      {selectedPeriod === 'Weekly' && (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
+          <TouchableOpacity 
+          onPress={() => setWeekOffset(weekOffset + 1)} 
+          style={{ padding: 10, backgroundColor: '#ddd', borderRadius: 8 }}>
+            <Text>← Previous Week</Text>
+          </TouchableOpacity>
+
+          <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>
+            {weekOffset === 0 ? "This Week" : `Week of ${new Date(new Date().getTime() - (weekOffset * 7 * 24 * 60 * 60 * 1000)).toLocaleDateString()}`}
+          </Text>
+
+          <TouchableOpacity 
+          onPress={() => setWeekOffset(Math.max(0, weekOffset - 1))} 
+          style={{ padding: 10, backgroundColor: weekOffset === 0 ? '#eee' : '#ddd', borderRadius: 8 }}
+          disabled={weekOffset === 0}
+          >
+            <Text style={{ color: weekOffset === 0 ? '#aaa' : '#000' }}>Next Week →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* NUTRITION SUMMARY DASHBOARD */}
       <View style={styles.summaryContainer}>
@@ -191,11 +256,32 @@ export default function DiaryScreen() {
         )}
       </View>
       
+      {selectedPeriod !== 'Compare' && (
+        <>
+          <View style={styles.summaryContainer}>
+            
+          </View>
+          <View style={styles.aiContainer}>
+            
+          </View>
+        </>
+      )}
+
       {loading ? (
         <ActivityIndicator size="large" color="#FF9500" style={styles.loader} />
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
+      ) : selectedPeriod === 'Compare' ? (
+        
+        <FlatList
+          data={weeklyComparisons}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderComparisonCard}
+          ListEmptyComponent={<Text style={styles.emptyText}>No comparison data available.</Text>}
+          contentContainerStyle={styles.listContainer}
+        />
       ) : (
+        
         <FlatList
           data={filteredLogs}
           keyExtractor={(item) => item.logId.toString()}
