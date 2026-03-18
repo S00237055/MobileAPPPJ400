@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { Dimensions } from 'react-native';
+import { BarChart } from 'react-native-chart-kit';
 
 interface SavedFoodLog {
   logId: number;
@@ -9,14 +11,16 @@ interface SavedFoodLog {
   dateEaten: string;
 }
 
-type Period = 'Daily' | 'Weekly' | 'Monthly' | 'Compare';
+type Period = 'Daily' | 'Weekly' | 'Monthly';
 
 export default function DiaryScreen() {
   const [logs, setLogs] = useState<SavedFoodLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('Daily');
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = previous week, etc.
+  
+  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  
   //AI Advice State
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -52,8 +56,7 @@ export default function DiaryScreen() {
     // Start of today
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     // Start of the week
-    const startOfWeekTarget = startOfToday - (weekOffset * 7 * 24 * 60 * 60 * 1000) + (924 * 60 * 60 * 1000 - 1); // Adjust for timezone to ensure we get the correct week
-    const endOfWeekTarget = startOfWeekTarget + (6 * 24 * 60 * 60 * 1000); // End of the week
+    
     // Start of the current month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
@@ -61,7 +64,7 @@ export default function DiaryScreen() {
       const logTime = new Date(log.dateEaten).getTime();
       
       if (selectedPeriod === 'Daily') return logTime >= startOfToday;
-      if (selectedPeriod === 'Weekly') return logTime >= startOfWeekTarget && logTime <= endOfWeekTarget;
+      
       if (selectedPeriod === 'Monthly') return logTime >= startOfMonth;
       
       return true;
@@ -71,7 +74,7 @@ export default function DiaryScreen() {
   const filteredLogs = getFilteredLogs();
 
   const getWeeklyComparisons = () => {
-    const weeklyData: Record<string, { weekStart: string, calories: number, protein: number }> ={};
+    const weeklyData: Record<string, { weekStart: string, calories: number, protein: number, foods: SavedFoodLog[] }> ={};
       
       logs.forEach(log => {
         const date = new Date(log.dateEaten);
@@ -81,11 +84,12 @@ export default function DiaryScreen() {
         const weekStart = date.toLocaleDateString();
 
         if (!weeklyData[weekStart]) {
-          weeklyData[weekStart] = { weekStart, calories: 0, protein: 0 };
+          weeklyData[weekStart] = { weekStart, calories: 0, protein: 0, foods: [] };
         }
 
         weeklyData[weekStart].calories += log.calories;
         weeklyData[weekStart].protein += log.proteinGrams;
+        weeklyData[weekStart].foods.push(log);
       });
 
       return Object.values(weeklyData).sort((a, b) => 
@@ -97,6 +101,19 @@ export default function DiaryScreen() {
   
 
   
+    const screenWidth = Dimensions.get("window").width; // Account for padding
+    const chartData = {
+    labels: [...weeklyComparisons].reverse().map(w => {
+      // Shorten the date for the X-axis so it fits nicely (e.g., turns "10/14/2024" into "10/14")
+      const parts = w.weekStart.split('/');
+      return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : w.weekStart;
+    }),
+    datasets: [
+      {
+        data: [...weeklyComparisons].reverse().map(w => w.calories)
+      }
+    ]
+  };
 
   //SUMMARY
   const totalCalories = filteredLogs.reduce((sum, log) => sum + log.calories, 0);
@@ -165,17 +182,43 @@ export default function DiaryScreen() {
     );
   };
 
-  const renderComparisonCard = ({ item }: { item: { weekStart: string, calories: number, protein: number } }) => (
-    <View style={[styles.card, { borderLeftColor: '#8A2BE2' }]}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.foodName}>Week of {item.weekStart}</Text>
+  const renderComparisonCard = ({ item }: { item: { weekStart: string, calories: number, protein: number, foods: SavedFoodLog[] } }) => {
+    const isExpanded = expandedWeek === item.weekStart;
+
+    
+
+  return (
+      <View style={{ marginBottom: 12 }}>
+        <TouchableOpacity 
+          style={[
+            styles.card, 
+            { borderLeftColor: '#8A2BE2', marginBottom: 0, borderBottomLeftRadius: isExpanded ? 0 : 12, borderBottomRightRadius: isExpanded ? 0 : 12 }
+          ]}
+          onPress={() => setExpandedWeek(isExpanded ? null : item.weekStart)}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.foodName}>Week of {item.weekStart}</Text>
+            <Text>{isExpanded ? '🔽' : '▶️'}</Text>
+          </View>
+          <View style={styles.macroContainer}>
+            <Text style={styles.macroText}>🔥 Total: {item.calories} kcal</Text>
+            <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.dropdownBox}>
+            {item.foods.map((food, index) => (
+              <View key={index} style={[styles.dropdownRow, { borderBottomWidth: index === item.foods.length - 1 ? 0 : 1 }]}>
+                <Text style={styles.dropdownFoodName}>{food.foodName}</Text>
+                <Text style={styles.dropdownMacros}>{food.calories} kcal  |  {food.proteinGrams}g pro</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
-      <View style={styles.macroContainer}>
-        <Text style={styles.macroText}>🔥 Total: {item.calories} kcal</Text>
-        <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -188,11 +231,14 @@ export default function DiaryScreen() {
 
       {/*PERIOD BUTTONS*/}
       <View style={styles.toggleContainer}>
-        {(['Daily', 'Weekly', 'Monthly', 'Compare'] as Period[]).map((period) => (
+        {(['Daily', 'Weekly', 'Monthly'] as Period[]).map((period) => (
           <TouchableOpacity
             key={period}
             style={[styles.toggleButton, selectedPeriod === period && styles.toggleButtonActive]}
-            onPress={() => setSelectedPeriod(period)}
+            onPress={() => {
+              setSelectedPeriod(period);
+            setExpandedWeek(null);
+            }}
           >
             <Text style={[styles.toggleText, selectedPeriod === period && styles.toggleTextActive]}>
               {period}
@@ -200,30 +246,11 @@ export default function DiaryScreen() {
           </TouchableOpacity>
         ))}
       </View>
-      {/*Weekly Navigation*/}
-      {selectedPeriod === 'Weekly' && (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
-          <TouchableOpacity 
-          onPress={() => setWeekOffset(weekOffset + 1)} 
-          style={{ padding: 10, backgroundColor: '#ddd', borderRadius: 8 }}>
-            <Text>← Previous Week</Text>
-          </TouchableOpacity>
-
-          <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>
-            {weekOffset === 0 ? "This Week" : `Week of ${new Date(new Date().getTime() - (weekOffset * 7 * 24 * 60 * 60 * 1000)).toLocaleDateString()}`}
-          </Text>
-
-          <TouchableOpacity 
-          onPress={() => setWeekOffset(Math.max(0, weekOffset - 1))} 
-          style={{ padding: 10, backgroundColor: weekOffset === 0 ? '#eee' : '#ddd', borderRadius: 8 }}
-          disabled={weekOffset === 0}
-          >
-            <Text style={{ color: weekOffset === 0 ? '#aaa' : '#000' }}>Next Week →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      
 
       {/* NUTRITION SUMMARY DASHBOARD */}
+      {selectedPeriod !== 'Weekly' && (
+        <>
       <View style={styles.summaryContainer}>
         <Text style={styles.summaryTitle}>{selectedPeriod} Summary</Text>
         <View style={styles.summaryRow}>
@@ -255,31 +282,57 @@ export default function DiaryScreen() {
           </View>
         )}
       </View>
+      </>
+    )}
       
-      {selectedPeriod !== 'Compare' && (
-        <>
-          <View style={styles.summaryContainer}>
-            
-          </View>
-          <View style={styles.aiContainer}>
-            
-          </View>
-        </>
-      )}
+      
 
       {loading ? (
         <ActivityIndicator size="large" color="#FF9500" style={styles.loader} />
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
-      ) : selectedPeriod === 'Compare' ? (
-        
-        <FlatList
-          data={weeklyComparisons}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderComparisonCard}
-          ListEmptyComponent={<Text style={styles.emptyText}>No comparison data available.</Text>}
-          contentContainerStyle={styles.listContainer}
-        />
+      ) : selectedPeriod === 'Weekly' ? (
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={weeklyComparisons}
+            keyExtractor={(item, index) => index.toString()}
+            ListHeaderComponent={
+              /* FIX 1: Changed && to ? */
+              weeklyComparisons.length > 0 ? (
+                <View style={{ alignItems: 'center', marginBottom: 20, backgroundColor: '#fff', borderRadius: 12, padding: 10 }}>
+                  <Text style={styles.summaryTitle}>Weekly Calorie Trend</Text>
+                  <BarChart
+                    data={chartData}
+                    width={screenWidth - 52} 
+                    height={220}
+                    yAxisLabel=""
+                    yAxisSuffix=""
+                    fromZero={true}
+                    chartConfig={{
+                      backgroundColor: '#ffffff',
+                      backgroundGradientFrom: '#ffffff',
+                      backgroundGradientTo: '#ffffff',
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(138, 43, 226, ${opacity})`, 
+                      labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
+                      style: {
+                        borderRadius: 16,
+                      },
+                    }}
+                    style={{
+                      marginVertical: 8,
+                      borderRadius: 16,
+                    }}
+                  />
+                </View>
+              ) : <></>
+            }
+            renderItem={renderComparisonCard}
+            ListEmptyComponent={<Text style={styles.emptyText}>No comparison data available.</Text>}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false} 
+          />
+        </View> 
       ) : (
         
         <FlatList
@@ -332,4 +385,10 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 12, color: '#888', marginLeft: 10 },
   macroContainer: { flexDirection: 'row', gap: 15 },
   macroText: { fontSize: 14, color: '#555', fontWeight: '500' },
+
+
+  dropdownBox: { backgroundColor: '#f9f9f9', padding: 12, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, borderWidth: 1, borderColor: '#eee', borderTopWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
+  dropdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomColor: '#ddd' },
+  dropdownFoodName: { flex: 1, color: '#333', fontWeight: '500' },
+  dropdownMacros: { color: '#666', fontSize: 13 }
 });
