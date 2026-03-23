@@ -38,6 +38,15 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="leaf.fill" color={color} />,
         }}
         />
+
+      <Tabs.Screen
+        name="week-details"
+        options={{
+          href: null,
+          headerShown: false,
+        }}
+
+        />
     </Tabs>
   );
 }

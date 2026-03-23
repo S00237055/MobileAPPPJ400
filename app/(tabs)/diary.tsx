@@ -75,7 +75,7 @@ export default function DiaryScreen() {
   const filteredLogs = getFilteredLogs();
 
   const getWeeklyComparisons = () => {
-    const weeklyData: Record<string, { weekStart: string, calories: number, protein: number }> = {};
+    const weeklyData: Record<string, { weekStart: string, rawDate: string,calories: number, protein: number }> = {};
       
     logs.forEach(log => {
       const date = new Date(log.dateEaten);
@@ -84,14 +84,14 @@ export default function DiaryScreen() {
       const weekStart = date.toLocaleDateString();
 
       if (!weeklyData[weekStart]) {
-        weeklyData[weekStart] = { weekStart, calories: 0, protein: 0 };
+        weeklyData[weekStart] = { weekStart, rawDate: date.toISOString(), calories: 0, protein: 0 };
       }
       weeklyData[weekStart].calories += log.calories;
       weeklyData[weekStart].protein += log.proteinGrams;
     });
 
     return Object.values(weeklyData).sort((a, b) => 
-      new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
+      new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
     );
   };
 
@@ -180,15 +180,15 @@ export default function DiaryScreen() {
     );
   };
 
-  const renderComparisonCard = ({ item }: { item: { weekStart: string, calories: number, protein: number } }) => (
+  const renderComparisonCard = ({ item }: { item: { weekStart: string, rawDate: string, calories: number, protein: number } }) => {
     
-    
-
-  
-    <TouchableOpacity 
-      style={[styles.card, { borderLeftColor: '#8A2BE2' }]}
+    return (
+      <View style={{ marginBottom: 12}}>
       
-      onPress={() => router.push({ pathname: '/week-details', params: { date: item.weekStart } })}
+      <TouchableOpacity 
+      style={[styles.card, { borderLeftColor: '#8A2BE2', marginBottom: 0}]}
+      
+      onPress={() => router.push({ pathname: '/week-details', params: { safeDate: item.rawDate, displayDate: item.weekStart } })}
     >
       <View style={styles.cardHeader}>
         <Text style={styles.foodName}>Week of {item.weekStart}</Text>
@@ -199,7 +199,9 @@ export default function DiaryScreen() {
         <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
       </View>
     </TouchableOpacity>
-  );
+    </View>
+    );
+  };
 
   return (
     <View style={styles.container}>

@@ -11,7 +11,7 @@ interface SavedFoodLog {
 }
 
 export default function WeekDetailsScreen() {
-    const { date } = useLocalSearchParams();
+    const { safeDate, displayDate } = useLocalSearchParams();
     const [logs, setLogs] = useState<SavedFoodLog[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,9 +31,9 @@ export default function WeekDetailsScreen() {
     }, []);
 
     const getWeeklyFoods = () => {
-        if (!date) return [];
+        if (!safeDate) return [];
 
-        const weekStart = new Date(date as string);
+        const weekStart = new Date(safeDate as string);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
@@ -71,7 +71,7 @@ export default function WeekDetailsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backText}>⬅ Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Week of {date}</Text>
+        <Text style={styles.title}>Week of {displayDate}</Text>
         <View style={{ width: 60 }} /> {/* Empty view to center the title */}
       </View>
 
