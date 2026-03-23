@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { Dimensions } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
+import { router } from 'expo-router';
 
 interface SavedFoodLog {
   logId: number;
@@ -74,28 +75,25 @@ export default function DiaryScreen() {
   const filteredLogs = getFilteredLogs();
 
   const getWeeklyComparisons = () => {
-    const weeklyData: Record<string, { weekStart: string, calories: number, protein: number, foods: SavedFoodLog[] }> ={};
+    const weeklyData: Record<string, { weekStart: string, calories: number, protein: number }> = {};
       
-      logs.forEach(log => {
-        const date = new Date(log.dateEaten);
+    logs.forEach(log => {
+      const date = new Date(log.dateEaten);
+      const day = date.getDay() || 7;
+      date.setHours(-24 * (day -1), 0, 0, 0);
+      const weekStart = date.toLocaleDateString();
 
-        const day = date.getDay() || 7;
-        date.setHours(-24 * (day -1), 0, 0, 0);
-        const weekStart = date.toLocaleDateString();
+      if (!weeklyData[weekStart]) {
+        weeklyData[weekStart] = { weekStart, calories: 0, protein: 0 };
+      }
+      weeklyData[weekStart].calories += log.calories;
+      weeklyData[weekStart].protein += log.proteinGrams;
+    });
 
-        if (!weeklyData[weekStart]) {
-          weeklyData[weekStart] = { weekStart, calories: 0, protein: 0, foods: [] };
-        }
-
-        weeklyData[weekStart].calories += log.calories;
-        weeklyData[weekStart].protein += log.proteinGrams;
-        weeklyData[weekStart].foods.push(log);
-      });
-
-      return Object.values(weeklyData).sort((a, b) => 
-        new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
-      );
-    };
+    return Object.values(weeklyData).sort((a, b) => 
+      new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
+    );
+  };
 
     const weeklyComparisons = getWeeklyComparisons();
   
@@ -104,7 +102,7 @@ export default function DiaryScreen() {
     const screenWidth = Dimensions.get("window").width; // Account for padding
     const chartData = {
     labels: [...weeklyComparisons].reverse().map(w => {
-      // Shorten the date for the X-axis so it fits nicely (e.g., turns "10/14/2024" into "10/14")
+      
       const parts = w.weekStart.split('/');
       return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : w.weekStart;
     }),
@@ -182,43 +180,26 @@ export default function DiaryScreen() {
     );
   };
 
-  const renderComparisonCard = ({ item }: { item: { weekStart: string, calories: number, protein: number, foods: SavedFoodLog[] } }) => {
-    const isExpanded = expandedWeek === item.weekStart;
-
+  const renderComparisonCard = ({ item }: { item: { weekStart: string, calories: number, protein: number } }) => (
+    
     
 
-  return (
-      <View style={{ marginBottom: 12 }}>
-        <TouchableOpacity 
-          style={[
-            styles.card, 
-            { borderLeftColor: '#8A2BE2', marginBottom: 0, borderBottomLeftRadius: isExpanded ? 0 : 12, borderBottomRightRadius: isExpanded ? 0 : 12 }
-          ]}
-          onPress={() => setExpandedWeek(isExpanded ? null : item.weekStart)}
-        >
-          <View style={styles.cardHeader}>
-            <Text style={styles.foodName}>Week of {item.weekStart}</Text>
-            <Text>{isExpanded ? '🔽' : '▶️'}</Text>
-          </View>
-          <View style={styles.macroContainer}>
-            <Text style={styles.macroText}>🔥 Total: {item.calories} kcal</Text>
-            <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
-          </View>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.dropdownBox}>
-            {item.foods.map((food, index) => (
-              <View key={index} style={[styles.dropdownRow, { borderBottomWidth: index === item.foods.length - 1 ? 0 : 1 }]}>
-                <Text style={styles.dropdownFoodName}>{food.foodName}</Text>
-                <Text style={styles.dropdownMacros}>{food.calories} kcal  |  {food.proteinGrams}g pro</Text>
-              </View>
-            ))}
-          </View>
-        )}
+  
+    <TouchableOpacity 
+      style={[styles.card, { borderLeftColor: '#8A2BE2' }]}
+      
+      onPress={() => router.push({ pathname: '/week-details', params: { date: item.weekStart } })}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.foodName}>Week of {item.weekStart}</Text>
+        <Text>▶️</Text>
       </View>
-    );
-  };
+      <View style={styles.macroContainer}>
+        <Text style={styles.macroText}>🔥 Total: {item.calories} kcal</Text>
+        <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
@@ -297,7 +278,7 @@ export default function DiaryScreen() {
             data={weeklyComparisons}
             keyExtractor={(item, index) => index.toString()}
             ListHeaderComponent={
-              /* FIX 1: Changed && to ? */
+              
               weeklyComparisons.length > 0 ? (
                 <View style={{ alignItems: 'center', marginBottom: 20, backgroundColor: '#fff', borderRadius: 12, padding: 10 }}>
                   <Text style={styles.summaryTitle}>Weekly Calorie Trend</Text>
