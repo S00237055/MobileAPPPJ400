@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 
 interface SavedFoodLog {
@@ -81,13 +81,13 @@ export default function WeekDetailsScreen() {
         const lastWeekCals = lastWeekFoods.reduce((sum, log) => sum + log.calories, 0);
         const lastWeekProtein = lastWeekFoods.reduce((sum, log) => sum + log.proteinGrams, 0);
 
-        const prompt = `Act as an expert nutritionist. Compare the following two weeks of food logs and provide insights on how to improve the user's diet.
-        Last week, my total intake was ${lastWeekCals} calories and ${lastWeekProtein} grams of protein.
-        This week, my total intake was ${thisWeekCals} calories and ${thisWeekProtein} grams of protein.
-        Please provide specific advice on how I can improve my diet based on these numbers.`;
+        const prompt = `Act as an expert nutritionist.
+        Last week, my total intake was ${lastWeekCals} calories and ${lastWeekProtein}g of protein.
+        This week, my total intake is ${thisWeekCals} calories and ${thisWeekProtein}g of protein.
+        Compare my progress between the two weeks. Keep it to 3 short sentences, highlight the differences,  and suggest one specific improvement I can make next week.`;
 
         try {
-            const response = await fetch('http://localhost:5226/api/AiComparison', {
+            const response = await fetch('http://localhost:5226/api/Ai/WeeklyComparison', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: prompt })
@@ -134,6 +134,25 @@ export default function WeekDetailsScreen() {
         );
     };
 
+    const renderHeader = () => (
+        <View style={styles.aiContainer}>
+            <TouchableOpacity
+                style={styles.aiButton}
+                onPress={getAiComparison}
+                disabled={aiLoading}
+            >
+                <Text style={styles.aiButtonText}>Compare with Last Week</Text>
+            </TouchableOpacity>
+
+            {aiLoading && <ActivityIndicator size="small" color="#8A2BE2" style={{ marginTop: 10 }} />}
+            {aiAdvice && (
+                <View style={styles.aiAdviceBox}>
+                    <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
+                </View>
+            )}
+        </View>
+    );
+
     return (
     <View style={styles.container}>
       {/* Custom Back Button Header */}
@@ -142,35 +161,26 @@ export default function WeekDetailsScreen() {
           <Text style={styles.backText}>⬅ Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Week of {displayDate}</Text>
-        <View style={{ width: 60 }} /> {/* Empty view to center the title */}
+        <View style={{ width: 60 }} />
       </View>
 
-      <View style={styles.aiContainer}>
-        <TouchableOpacity
-            style={styles.aiButton}
-            onPress={getAiComparison}
-            disabled={aiLoading}
-        >
-            <Text style={styles.aiButtonText}>Compare with Last Week</Text>
-        </TouchableOpacity>
-
-        {aiLoading && <ActivityIndicator size="small" color="#8A2BE2" style={{ marginTop: 10 }} />}
-        {aiAdvice && (
-            <View style={styles.aiAdviceBox}>
-                <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
-            </View>
-        )}
-      </View>
+      
 
       {loading ? (
         <ActivityIndicator size="large" color="#8A2BE2" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
+
+            ListHeaderComponent={renderHeader}
+
           data={weeklyFoods}
           keyExtractor={(item) => item.logId.toString()}
           renderItem={renderLog}
           ListEmptyComponent={<Text style={styles.emptyText}>No data for this week.</Text>}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 40 }}
+
+          showsVerticalScrollIndicator={false}
+
         />
       )}
     </View>
