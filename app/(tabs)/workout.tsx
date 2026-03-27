@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, FlatList, 
   Modal, StyleSheet, Alert, ScrollView, 
-  Button
+  Button, Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -11,7 +11,11 @@ interface Exercise {
   exerciseId: number;
   name: string;
   bodyPart: string;
-  description?: string;
+  target? : string;
+  equipment? : string;
+  gifUrl? : string;
+  instructions? : string;
+
 }
 
 interface WorkoutSet {
@@ -276,10 +280,20 @@ const formatTime = (seconds: number) => {
               <Text style={styles.header}>{viewingExercise.name}</Text>
               <Text style={styles.subHeader}>Target: {viewingExercise.bodyPart}</Text>
               
+              {viewingExercise.gifUrl && (
+                <View style={{ alignItems: 'center', marginVertical: 10 }}>
+                  <Image
+                   source={{ uri: viewingExercise.gifUrl }} 
+                   style={{ width: 250, height: 250, borderRadius: 10}} 
+                   resizeMode='contain'
+                   />
+
+                </View>
+              )}
               <View style={styles.instructionBox}>
                 <Text style={styles.instructionTitle}>How to do it:</Text>
                 <Text style={styles.instructionText}>
-                  {viewingExercise.description || "No instructions available for this exercise yet."}
+                  {viewingExercise.instructions || "No instructions available for this exercise yet."}
                 </Text>
               </View>
 
