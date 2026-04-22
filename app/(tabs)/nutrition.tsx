@@ -66,8 +66,8 @@ export default function NutritionScreen() {
       // );
 
       const fetchUrl = Platform.OS === 'web' 
-        ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` 
-        : targetUrl;
+  ? `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` 
+  : targetUrl;
         
       const response = await fetch(fetchUrl, fetchOptions);
       if (!response.ok){
@@ -147,7 +147,7 @@ export default function NutritionScreen() {
 
     try {
       
-      const response = await fetch('http://localhost:5226/api/FoodLogs', {
+      const response = await fetch('http://192.168.56.1/api/FoodLogs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
