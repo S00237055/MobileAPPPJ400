@@ -9,6 +9,8 @@ interface SavedFoodLog {
   foodName: string;
   calories: number;
   proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
   dateEaten: string;
 }
 
@@ -75,7 +77,7 @@ export default function DiaryScreen() {
   const filteredLogs = getFilteredLogs();
 
   const getWeeklyComparisons = () => {
-    const weeklyData: Record<string, { weekStart: string, rawDate: string,calories: number, protein: number }> = {};
+    const weeklyData: Record<string, { weekStart: string, rawDate: string,calories: number, protein: number, carbs: number, fat: number }> = {};
       
     logs.forEach(log => {
       const date = new Date(log.dateEaten);
@@ -84,10 +86,12 @@ export default function DiaryScreen() {
       const weekStart = date.toLocaleDateString();
 
       if (!weeklyData[weekStart]) {
-        weeklyData[weekStart] = { weekStart, rawDate: date.toISOString(), calories: 0, protein: 0 };
+        weeklyData[weekStart] = { weekStart, rawDate: date.toISOString(), calories: 0, protein: 0, carbs: 0, fat: 0 };
       }
       weeklyData[weekStart].calories += log.calories;
       weeklyData[weekStart].protein += log.proteinGrams;
+      weeklyData[weekStart].carbs += log.carbsGrams || 0; 
+      weeklyData[weekStart].fat += log.fatGrams || 0;
     });
 
     return Object.values(weeklyData).sort((a, b) => 
@@ -99,7 +103,7 @@ export default function DiaryScreen() {
   
 
   
-    const screenWidth = Dimensions.get("window").width; // Account for padding
+    const screenWidth = Dimensions.get("window").width; 
     const chartData = {
     labels: [...weeklyComparisons].reverse().map(w => {
       
@@ -116,6 +120,8 @@ export default function DiaryScreen() {
   //SUMMARY
   const totalCalories = filteredLogs.reduce((sum, log) => sum + log.calories, 0);
   const totalProtein = filteredLogs.reduce((sum, log) => sum + log.proteinGrams, 0);
+  const totalCarbs = filteredLogs.reduce((sum, log) => sum + (log.carbsGrams || 0), 0);
+  const totalFat = filteredLogs.reduce((sum, log) => sum + (log.fatGrams || 0), 0);
 
   const getAiDietAdvice = async () => {
     if (filteredLogs.length === 0) {
@@ -132,7 +138,7 @@ export default function DiaryScreen() {
     const foodList = filteredLogs.map(log => log.foodName).join(', ');
     
     
-    const prompt = `I am tracking my nutrition. Today I ate: ${foodList}. My total intake is ${totalCalories} calories and ${totalProtein}g of protein. In 2 short sentences, tell me how I can improve this diet for better health and muscle growth.`;
+    const prompt = `I am tracking my nutrition. Today I ate: ${foodList}. My total intake is ${totalCalories} calories and ${totalProtein}g of protein, ${totalCarbs}g of carbs, and ${totalFat}g of fat. In 2 short sentences, tell me how I can improve this diet for better health and muscle growth.`;
 
     try {
     
@@ -180,26 +186,62 @@ export default function DiaryScreen() {
     );
   };
 
-  const renderComparisonCard = ({ item }: { item: { weekStart: string, rawDate: string, calories: number, protein: number } }) => {
-    
+  const renderComparisonCard = ({ item }: { item: { weekStart: string, rawDate: string, calories: number, protein: number, carbs: number, fat: number } }) => {
     return (
       <View style={{ marginBottom: 12}}>
-      
-      <TouchableOpacity 
-      style={[styles.card, { borderLeftColor: '#8A2BE2', marginBottom: 0}]}
-      
-      onPress={() => router.push({ pathname: '/week-details', params: { safeDate: item.rawDate, displayDate: item.weekStart } })}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.foodName}>Week of {item.weekStart}</Text>
-        <Text>▶️</Text>
+        <TouchableOpacity 
+          style={[styles.card, { borderLeftColor: '#8A2BE2', marginBottom: 0}]}
+          onPress={() => router.push({ pathname: '/week-details', params: { safeDate: item.rawDate, displayDate: item.weekStart } })}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.foodName}>Week of {item.weekStart}</Text>
+            <Text>▶️</Text>
+          </View>
+          
+          <View style={[styles.macroContainer, { flexWrap: 'wrap' }]}>
+            <Text style={styles.macroText}>🔥 {item.calories} kcal</Text>
+            <Text style={styles.macroText}>🥩 {item.protein.toFixed(1)}g Pro</Text>
+            <Text style={styles.macroText}>🍞 {item.carbs.toFixed(1)}g Carb</Text>
+            <Text style={styles.macroText}>🥑 {item.fat.toFixed(1)}g Fat</Text>
+          </View>
+        </TouchableOpacity>
       </View>
-      <View style={styles.macroContainer}>
-        <Text style={styles.macroText}>🔥 Total: {item.calories} kcal</Text>
-        <Text style={styles.macroText}>🥩 Total: {item.protein.toFixed(1)}g Protein</Text>
+    );
+  };
+
+  
+  const chartLabels = [...weeklyComparisons].reverse().map(w => {
+    const parts = w.weekStart.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : w.weekStart;
+  });
+
+  
+  const renderChart = (title: string, dataPoints: number[], colorRgba: (opacity: number) => string) => {
+    return (
+      <View style={{ alignItems: 'center', marginBottom: 20, backgroundColor: '#fff', borderRadius: 12, padding: 10 }}>
+        <Text style={styles.summaryTitle}>{title}</Text>
+        <BarChart
+          data={{
+            labels: chartLabels,
+            datasets: [{ data: dataPoints }]
+          }}
+          width={screenWidth - 52} 
+          height={220}
+          yAxisLabel=""
+          yAxisSuffix=""
+          fromZero={true}
+          chartConfig={{
+            backgroundColor: '#ffffff',
+            backgroundGradientFrom: '#ffffff',
+            backgroundGradientTo: '#ffffff',
+            decimalPlaces: 0,
+            color: colorRgba, 
+            labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
+            style: { borderRadius: 16 },
+          }}
+          style={{ marginVertical: 8, borderRadius: 16 }}
+        />
       </View>
-    </TouchableOpacity>
-    </View>
     );
   };
 
@@ -280,33 +322,28 @@ export default function DiaryScreen() {
             data={weeklyComparisons}
             keyExtractor={(item, index) => index.toString()}
             ListHeaderComponent={
-              
               weeklyComparisons.length > 0 ? (
-                <View style={{ alignItems: 'center', marginBottom: 20, backgroundColor: '#fff', borderRadius: 12, padding: 10 }}>
-                  <Text style={styles.summaryTitle}>Weekly Calorie Trend</Text>
-                  <BarChart
-                    data={chartData}
-                    width={screenWidth - 52} 
-                    height={220}
-                    yAxisLabel=""
-                    yAxisSuffix=""
-                    fromZero={true}
-                    chartConfig={{
-                      backgroundColor: '#ffffff',
-                      backgroundGradientFrom: '#ffffff',
-                      backgroundGradientTo: '#ffffff',
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(138, 43, 226, ${opacity})`, 
-                      labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
-                      style: {
-                        borderRadius: 16,
-                      },
-                    }}
-                    style={{
-                      marginVertical: 8,
-                      borderRadius: 16,
-                    }}
-                  />
+                <View>
+                  {renderChart(
+                    "Weekly Calories", 
+                    [...weeklyComparisons].reverse().map(w => w.calories), 
+                    (opacity = 1) => `rgba(138, 43, 226, ${opacity})` // Purple
+                  )}
+                  {renderChart(
+                    "Weekly Protein (g)", 
+                    [...weeklyComparisons].reverse().map(w => w.protein), 
+                    (opacity = 1) => `rgba(255, 99, 132, ${opacity})` // Red/Pink
+                  )}
+                  {renderChart(
+                    "Weekly Carbs (g)", 
+                    [...weeklyComparisons].reverse().map(w => w.carbs), 
+                    (opacity = 1) => `rgba(54, 162, 235, ${opacity})` // Blue
+                  )}
+                  {renderChart(
+                    "Weekly Fat (g)", 
+                    [...weeklyComparisons].reverse().map(w => w.fat), 
+                    (opacity = 1) => `rgba(255, 206, 86, ${opacity})` // Yellow
+                  )}
                 </View>
               ) : <></>
             }
