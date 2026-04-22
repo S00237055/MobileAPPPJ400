@@ -1,21 +1,23 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  Button, 
-  FlatList, 
-  ActivityIndicator, 
-  StyleSheet, 
-  Keyboard,
-  Alert,
-  TouchableOpacity
-} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  FlatList,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 interface FoodItem {
   id: string;
   product_name?: string;
+  product_name_en?: string;
   brands?: string;
   nutriments?: {
     'energy-kcal_100g'?: number;
@@ -43,9 +45,35 @@ export default function NutritionScreen() {
 
     try {
       
-      const response = await fetch(
-        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=10`
-      );
+      const requestHeaders: any = {};
+
+      
+      if (Platform.OS !== 'web') {
+        requestHeaders['User-Agent'] = 'MyFitnessApp - Android/iOS - Version 1.0';
+        requestHeaders['Accept'] = 'application/json';
+      }
+
+      const fetchOptions = Object.keys(requestHeaders).length > 0 
+        ? { headers: requestHeaders } 
+        : undefined;
+
+      const targetUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=30&fields=id,product_name,product_name_en,brands,nutriments&lc=en`;
+      
+      // const response = await fetch(
+      //   `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=30&fields=id,product_name,product_name_en,brands,nutriments&lc=en`,
+        
+      //   fetchOptions
+      // );
+
+      const fetchUrl = Platform.OS === 'web' 
+        ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}` 
+        : targetUrl;
+        
+      const response = await fetch(fetchUrl, fetchOptions);
+      if (!response.ok){
+        throw new Error(`Server Error: ${response.status}`);
+      }
+
       
       const data = await response.json();
 
@@ -54,8 +82,9 @@ export default function NutritionScreen() {
       } else {
         setNutritionData([]);
       }
-    } catch (err) {
-      setError('Failed to fetch nutrition data. Please check your internet connection.');
+    } catch (err: any) {
+      console.error("Search API Error:", err.message);
+      setError(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -104,7 +133,7 @@ export default function NutritionScreen() {
 
   const saveToDatabase = async (item: any) => {
     
-    const foodName = item.product_name || 'Unknown Product';
+    const foodName = item.product_name_en || item.product_name || 'Unknown Product';
     const calories = parseInt(item.nutriments?.['energy-kcal_100g']) || 0;
     const protein = parseFloat(item.nutriments?.proteins_100g) || 0;
 
@@ -166,7 +195,7 @@ export default function NutritionScreen() {
 
     return (
       <View style={styles.card}>
-        <Text style={styles.foodName}>{item.product_name || 'Unknown Product'}</Text>
+        <Text style={styles.foodName}>{item.product_name_en || item.product_name || 'Unknown Product'}</Text>
         <Text style={styles.brandText}>Brand: {item.brands || 'Unknown'}</Text>
         
         <View style={styles.macroContainer}>
