@@ -104,18 +104,9 @@ export default function DiaryScreen() {
 
   
     const screenWidth = Dimensions.get("window").width; 
-    const chartData = {
-    labels: [...weeklyComparisons].reverse().map(w => {
-      
-      const parts = w.weekStart.split('/');
-      return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : w.weekStart;
-    }),
-    datasets: [
-      {
-        data: [...weeklyComparisons].reverse().map(w => w.calories)
-      }
-    ]
-  };
+    
+    const chartWidth = (screenWidth - 42) / 2
+    
 
   //SUMMARY
   const totalCalories = filteredLogs.reduce((sum, log) => sum + log.calories, 0);
@@ -218,18 +209,27 @@ export default function DiaryScreen() {
   
   const renderChart = (title: string, dataPoints: number[], colorRgba: (opacity: number) => string) => {
     return (
-      <View style={{ alignItems: 'center', marginBottom: 20, backgroundColor: '#fff', borderRadius: 12, padding: 10 }}>
-        <Text style={styles.summaryTitle}>{title}</Text>
+      <View style={{ 
+        width: chartWidth, 
+        alignItems: 'center', 
+        marginBottom: 10, 
+        backgroundColor: '#fff', 
+        borderRadius: 12, 
+        paddingTop: 10,
+        paddingBottom: 5 
+      }}>
+        <Text style={[styles.summaryTitle, { fontSize: 14, marginBottom: 5 }]}>{title}</Text>
         <BarChart
           data={{
             labels: chartLabels,
             datasets: [{ data: dataPoints }]
           }}
-          width={screenWidth - 52} 
-          height={220}
+          width={chartWidth - 10}
+          height={160} 
           yAxisLabel=""
           yAxisSuffix=""
           fromZero={true}
+          showBarTops={false}
           chartConfig={{
             backgroundColor: '#ffffff',
             backgroundGradientFrom: '#ffffff',
@@ -237,9 +237,10 @@ export default function DiaryScreen() {
             decimalPlaces: 0,
             color: colorRgba, 
             labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
-            style: { borderRadius: 16 },
+            style: { borderRadius: 12 },
+            barPercentage: 0.6,
           }}
-          style={{ marginVertical: 8, borderRadius: 16 }}
+          style={{ marginVertical: 8, borderRadius: 12 }}
         />
       </View>
     );
@@ -323,26 +324,31 @@ export default function DiaryScreen() {
             keyExtractor={(item, index) => index.toString()}
             ListHeaderComponent={
               weeklyComparisons.length > 0 ? (
-                <View>
+                <View style={{ 
+                  flexDirection: 'row', 
+                  flexWrap: 'wrap', 
+                  justifyContent: 'space-between', 
+                  marginBottom: 10 
+                }}>
                   {renderChart(
                     "Weekly Calories", 
                     [...weeklyComparisons].reverse().map(w => w.calories), 
-                    (opacity = 1) => `rgba(138, 43, 226, ${opacity})` // Purple
+                    (opacity = 1) => `rgba(138, 43, 226, ${opacity})` 
                   )}
                   {renderChart(
                     "Weekly Protein (g)", 
                     [...weeklyComparisons].reverse().map(w => w.protein), 
-                    (opacity = 1) => `rgba(255, 99, 132, ${opacity})` // Red/Pink
+                    (opacity = 1) => `rgba(255, 99, 132, ${opacity})` 
                   )}
                   {renderChart(
                     "Weekly Carbs (g)", 
                     [...weeklyComparisons].reverse().map(w => w.carbs), 
-                    (opacity = 1) => `rgba(54, 162, 235, ${opacity})` // Blue
+                    (opacity = 1) => `rgba(54, 162, 235, ${opacity})` 
                   )}
                   {renderChart(
                     "Weekly Fat (g)", 
                     [...weeklyComparisons].reverse().map(w => w.fat), 
-                    (opacity = 1) => `rgba(255, 206, 86, ${opacity})` // Yellow
+                    (opacity = 1) => `rgba(255, 206, 86, ${opacity})` 
                   )}
                 </View>
               ) : <></>
