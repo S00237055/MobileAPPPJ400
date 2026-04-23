@@ -33,7 +33,7 @@ export default function DiaryScreen() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:5226/api/FoodLogs');
+      const response = await fetch('http://192.168.1.166:5226/api/FoodLogs');
       
       if (!response.ok) {
         throw new Error('Failed to fetch data');
@@ -134,7 +134,7 @@ export default function DiaryScreen() {
     try {
     
       
-      const response = await fetch('http://localhost:5226/api/Ai/DietAdvice', {
+      const response = await fetch('http://192.168.1.166:5226/api/Ai/DietAdvice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: prompt })

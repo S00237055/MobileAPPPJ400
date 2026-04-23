@@ -30,7 +30,7 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
   const [activeChart, setActiveChart] = useState<'Volume' | 'Reps'>('Volume');
 
-  const API_URL = 'http://localhost:5226/api'; 
+  const API_URL = 'http://192.168.1.166:5226/api'; 
 
   const screenWidth = Dimensions.get("window").width;
 

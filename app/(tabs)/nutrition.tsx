@@ -59,7 +59,7 @@ export default function NutritionScreen() {
 
       
       if (Platform.OS !== 'web') {
-        requestHeaders['User-Agent'] = 'MyFitnessApp - Android/iOS - Version 1.0';
+        requestHeaders['User-Agent'] = 'MyFitnessApp/1.0 (kianreynolds234@gmail.com)';
         requestHeaders['Accept'] = 'application/json';
       }
 
@@ -69,11 +69,7 @@ export default function NutritionScreen() {
 
       const targetUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=30&fields=id,product_name,product_name_en,brands,nutriments&lc=en`;
       
-      // const response = await fetch(
-      //   `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=30&fields=id,product_name,product_name_en,brands,nutriments&lc=en`,
-        
-      //   fetchOptions
-      // );
+      
 
       const fetchUrl = Platform.OS === 'web' 
   ? `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` 
@@ -94,7 +90,11 @@ export default function NutritionScreen() {
       }
     } catch (err: any) {
       console.error("Search API Error:", err.message);
-      setError(`Error: ${err.message}`);
+      if (err.message.includes('503') || err.message.includes('502') || err.message.includes('504')) {
+         setError("The food database is currently very busy. Please wait a minute and try again!");
+      } else {
+         setError(`Error: Could not connect to the food database.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export default function NutritionScreen() {
 
     try {
       
-      const response = await fetch('http://192.168.56.1/api/FoodLogs', {
+      const response = await fetch('http://192.168.1.166:5226/api/FoodLogs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -291,9 +291,19 @@ const openScanner = () => {
               </View>
 
               <View style={styles.statsContainer}>
+                <Text style={styles.statText}>🔥 Calories: {parseInt(foodInfo.nutriments?.['energy-kcal_100g']) || 0} kcal</Text>
+                <Text style={styles.statText}>🥩 Protein: {parseFloat(foodInfo.nutriments?.proteins_100g) || 0}g</Text>
                 <Text style={styles.statText}>🧪 Additives: {foodInfo.additives_n || 0}</Text>
                 <Text style={styles.statText}>📊 Nutri-Score: {foodInfo.nutriscore_grade?.toUpperCase() || "N/A"}</Text>
+
               </View>
+
+              <TouchableOpacity 
+                style={[styles.scanAgainButton, { backgroundColor: '#28a745', marginBottom: 15 }]} 
+                onPress={() => saveToDatabase(foodInfo)}
+              >
+                <Text style={styles.scanAgainText}>💾 Save to Diary</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity style={styles.scanAgainButton} onPress={() => { setFoodInfo(null); setScanned(false); }}>
                 <Text style={styles.scanAgainText}>Scan Another</Text>

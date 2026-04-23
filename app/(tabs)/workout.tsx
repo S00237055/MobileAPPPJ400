@@ -45,7 +45,7 @@ export default function WorkoutScreen() {
   const [exerciseSearch, setExerciseSearch] = useState('');
 
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
-  const API_URL = 'http://localhost:5226/api'; 
+  const API_URL = 'http://192.168.1.166:5226/api'; 
   const USER_ID = 3; 
 
   const handleLogout = async () => {
