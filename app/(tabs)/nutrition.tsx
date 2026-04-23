@@ -11,7 +11,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Image,
+  Modal
 } from 'react-native';
 
 interface FoodItem {
@@ -28,13 +30,21 @@ interface FoodItem {
 }
 
 export default function NutritionScreen() {
+
+  const [isScannerVisible, setIsScannerVisible] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [foodInfo, setFoodInfo] = useState<any>(null);
+
+
   const [searchQuery, setSearchQuery] = useState('');
   const [nutritionData, setNutritionData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [permission, requestPermission] = useCameraPermissions();
-  const [isScanning, setIsScanning] = useState(false);
+  
+
+
 
   const fetchNutritionData = async () => {
     if (!searchQuery.trim()) return;
@@ -113,23 +123,9 @@ export default function NutritionScreen() {
     }
   };
 
-  // --- CAMERA LOGIC ---
-  const startScan = async () => {
-    if (!permission?.granted) {
-      const { granted } = await requestPermission();
-      if (!granted) {
-        Alert.alert('Permission Denied', 'Camera access is required to scan barcodes.');
-        return;
-      }
-    }
-    setIsScanning(true);
-  };
+  
 
-  const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
-    setIsScanning(false); // Close camera
-    setSearchQuery(data); // Put the barcode numbers in the text box
-    fetchBarcodeData(data); // Instantly search for the food
-  };
+  
 
   const saveToDatabase = async (item: any) => {
     
@@ -166,25 +162,45 @@ export default function NutritionScreen() {
     }
   };
 
-  if (isScanning) {
-    return (
-      <View style={styles.cameraContainer}>
-        <CameraView
-          style={StyleSheet.absoluteFillObject}
-          barcodeScannerSettings={{
-            barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "qr"], // Standard food barcode types
-          }}
-          onBarcodeScanned={handleBarCodeScanned}
-        />
-        <View style={styles.cameraOverlay}>
-            <Text style={styles.cameraText}>Point camera at a food barcode</Text>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setIsScanning(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-        </View>
-      </View>
-    );
+  
+
+const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
+  setScanned(true);
+  setLoading(true);
+
+  try {
+    const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${data}.json`);
+    const json = await response.json();
+
+    if (json.status === 1) {
+      setFoodInfo(json.product);
+    } else {
+      Alert.alert("Not Found", "We couldn't find this product in our database.");
+      setFoodInfo(null);
+    }
+  } catch (error) {
+    Alert.alert("Error", "Could not connect to the food database.");
+  } finally {
+    setLoading(false);
   }
+};
+
+const getSafetyStatus = (novaGroup: number) => {
+  switch (novaGroup) {
+    case 1: return { label: "✅ Natural / Unprocessed", color: "#4CAF50" };
+    case 2: return { label: "⚠️ Processed Culinary Ingredient", color: "#8BC34A" };
+    case 3: return { label: "⚠️ Processed Food", color: "#FFC107" };
+    case 4: return { label: "❌ Ultra-Processed", color: "#F44336" };
+    default: return { label: "❓ Unknown Processing Level", color: "#9E9E9E" };
+  }
+};
+
+const openScanner = () => {
+  if (!permission?.granted) {
+    requestPermission();
+  }
+  setIsScannerVisible(true);
+};
 
   const renderItem = ({ item }: any) => {
    
@@ -226,7 +242,7 @@ export default function NutritionScreen() {
           onSubmitEditing={fetchNutritionData}
           placeholderTextColor="#888"
         />
-        <TouchableOpacity style={styles.iconButton} onPress={startScan}>
+        <TouchableOpacity style={styles.iconButton} onPress={openScanner}>
           <Text style={{ fontSize: 24 }}>📷</Text>
         </TouchableOpacity>
         <Button title="Search" onPress={fetchNutritionData} />
@@ -247,6 +263,72 @@ export default function NutritionScreen() {
         }
         contentContainerStyle={styles.listContainer}
       />
+    <Text>My Nutrition Page</Text>
+      
+      
+
+
+      
+      <Modal visible={isScannerVisible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modalContainer}>
+          
+         
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => { setIsScannerVisible(false); setFoodInfo(null); setScanned(false); }}
+          >
+            <Text style={styles.closeButtonText}>Close ✖</Text>
+          </TouchableOpacity>
+
+          
+          {foodInfo ? (
+            <View style={styles.resultContainer}>
+              {foodInfo.image_url && <Image source={{ uri: foodInfo.image_url }} style={styles.productImage} />}
+              <Text style={styles.productName}>{foodInfo.product_name || "Unknown Product"}</Text>
+              
+              <View style={[styles.badge, { backgroundColor: getSafetyStatus(foodInfo.nova_group).color }]}>
+                <Text style={styles.badgeText}>{getSafetyStatus(foodInfo.nova_group).label}</Text>
+              </View>
+
+              <View style={styles.statsContainer}>
+                <Text style={styles.statText}>🧪 Additives: {foodInfo.additives_n || 0}</Text>
+                <Text style={styles.statText}>📊 Nutri-Score: {foodInfo.nutriscore_grade?.toUpperCase() || "N/A"}</Text>
+              </View>
+
+              <TouchableOpacity style={styles.scanAgainButton} onPress={() => { setFoodInfo(null); setScanned(false); }}>
+                <Text style={styles.scanAgainText}>Scan Another</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.cameraWrapper}>
+              {permission?.granted ? (
+                <CameraView 
+                  style={styles.camera} 
+                  facing="back"
+                  onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                  barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }}
+                >
+                  <View style={styles.overlay}>
+                    <View style={styles.scanTarget} />
+                    <Text style={styles.scanInstructions}>Point camera at a barcode</Text>
+                  </View>
+                </CameraView>
+              ) : (
+                <Text style={{textAlign: 'center', marginTop: 50}}>Need camera permission.</Text>
+              )}
+              
+              {loading && (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color="#ffffff" />
+                  <Text style={styles.loadingText}>Analyzing...</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -342,4 +424,31 @@ const styles = StyleSheet.create({
   cameraText: { color: 'white', fontSize: 18, marginBottom: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8, overflow: 'hidden' },
   cancelButton: { backgroundColor: '#ff3b30', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   cancelButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+
+
+  openScannerButton: { backgroundColor: '#8A2BE2', padding: 15, borderRadius: 10, alignItems: 'center', marginVertical: 10 },
+  openScannerText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  
+  modalContainer: { flex: 1, backgroundColor: '#f5f5f5' },
+  closeButton: { padding: 20, paddingTop: 50, backgroundColor: '#eee', alignItems: 'flex-end' },
+  closeButtonText: { fontSize: 16, color: '#333', fontWeight: 'bold' },
+  
+  cameraWrapper: { flex: 1 },
+  camera: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  scanTarget: { width: 250, height: 150, borderWidth: 2, borderColor: '#007AFF', borderRadius: 10, marginBottom: 20 },
+  scanInstructions: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  
+  loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: 'white', marginTop: 10, fontSize: 16, fontWeight: 'bold' },
+  
+  resultContainer: { flex: 1, alignItems: 'center', padding: 20 },
+  productImage: { width: 150, height: 150, resizeMode: 'contain', borderRadius: 10, marginBottom: 20 },
+  productName: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  badge: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, marginBottom: 20 },
+  badgeText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  statsContainer: { backgroundColor: 'white', padding: 20, borderRadius: 12, width: '100%', marginBottom: 30, elevation: 3 },
+  statText: { fontSize: 18, marginBottom: 10, color: '#555' },
+  scanAgainButton: { backgroundColor: '#007AFF', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 30 },
+  scanAgainText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
 });
