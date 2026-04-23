@@ -236,8 +236,8 @@ export default function DiaryScreen() {
             backgroundGradientTo: '#ffffff',
             decimalPlaces: 0,
             color: colorRgba, 
-            labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
-            style: { borderRadius: 12 },
+            fillShadowGradientOpacity: 1,
+            labelColor: () => `rgba(50, 50, 50, 1)`,
             barPercentage: 0.6,
           }}
           style={{ marginVertical: 8, borderRadius: 12 }}

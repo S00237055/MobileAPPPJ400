@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
+import { BarChart } from 'react-native-chart-kit';
 
 interface Workout {
   workoutId: number;
@@ -27,7 +28,11 @@ const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
 const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  const [activeChart, setActiveChart] = useState<'Volume' | 'Reps'>('Volume');
+
   const API_URL = 'http://localhost:5226/api'; 
+
+  const screenWidth = Dimensions.get("window").width;
 
   useFocusEffect(
     useCallback(() => {
@@ -107,12 +112,30 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
     } catch (error: any) {
       console.error(error);
-      Alert.alert("AI Error", "Could not connect to the AI service right now.");
+      if (error.message && error.message.includes("503")) {
+         Alert.alert("AI Trainer Busy", "The AI trainer is currently helping too many people! Please wait a minute and try again.");
+      } else {
+         Alert.alert("AI Error", "Could not connect to the AI service right now.");
+      }
     } finally {
       setAiLoading(false);
     }
   };
 
+  const handleSearch = (text: string) => {
+    setSearchText(text);
+    if (text) {
+        const filtered = workouts.filter(w => 
+        
+        w.notes?.toLowerCase().includes(text.toLowerCase()) ||
+        w.workoutSets.some(set => set.exercise?.name.toLowerCase().includes(text.toLowerCase()))
+        );
+        setFilteredWorkouts(filtered);
+    } else {
+        
+        setFilteredWorkouts(workouts);
+    }
+    };
   
   const renderWorkout = ({ item }: { item: Workout }) => (
     <View style={styles.card}>
@@ -130,20 +153,106 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
     </View>
   );
 
-  const handleSearch = (text: string) => {
-    setSearchText(text);
-    if (text) {
-        const filtered = workouts.filter(w => 
+  const renderListHeader = () => {
+    
+    const recentWorkouts = [...filteredWorkouts].slice(0, 7).reverse();
+
+    if (recentWorkouts.length === 0) return null;
+
+    
+    const chartLabels = recentWorkouts.map(w => {
+      const d = new Date(w.date);
+      return `${d.getDate()}/${d.getMonth() + 1}`;
+    });
+
+    
+    const volumeData = recentWorkouts.map(w => 
+      w.workoutSets.reduce((sum, set) => sum + (set.weightKg * set.reps), 0)
+    );
+
+    
+    const repsData = recentWorkouts.map(w => 
+      w.workoutSets.reduce((sum, set) => sum + set.reps, 0)
+    );
+
+    const dataToDisplay = activeChart === 'Volume' ? volumeData : repsData;
+    const chartColor = activeChart === 'Volume' ? '#007AFF' : '#FF9500';
+
+  
+   
+
+  return (
+      <View style={styles.headerContainer}>
         
-        w.notes?.toLowerCase().includes(text.toLowerCase()) ||
-        w.workoutSets.some(set => set.exercise?.name.toLowerCase().includes(text.toLowerCase()))
-        );
-        setFilteredWorkouts(filtered);
-    } else {
-        // If empty, show everything
-        setFilteredWorkouts(workouts);
-    }
-    };
+        <View style={styles.aiContainer}>
+          <TouchableOpacity 
+            style={styles.aiButton} 
+            onPress={getAiWorkoutAdvice}
+            disabled={aiLoading}
+          >
+            <Text style={styles.aiButtonText}>✨ Get AI Trainer Advice ✨</Text>
+          </TouchableOpacity>
+          {aiLoading && <ActivityIndicator size="small" color="#007AFF" style={{ marginTop: 10 }} />}
+          
+          {aiAdvice && (
+            <View style={styles.aiAdviceBox}>
+              <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
+            </View>
+          )}
+        </View>
+
+        
+        <View style={styles.chartWrapper}>
+          <Text style={styles.chartTitle}>Recent Workout {activeChart}</Text>
+          <BarChart
+            data={{
+              labels: chartLabels.length > 0 ? chartLabels : ['No Data'],
+              datasets: [{ data: dataToDisplay.length > 0 ? dataToDisplay : [0] }]
+            }}
+            width={screenWidth - 40}
+            height={220}
+            yAxisLabel=""
+            yAxisSuffix=""
+            fromZero={true}
+            showBarTops={false}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => activeChart === 'Volume' ? `rgba(0, 122, 255, ${opacity})` : `rgba(255, 149, 0, ${opacity})`,
+              fillShadowGradientOpacity: 1, 
+              labelColor: () => `rgba(50, 50, 50, 1)`,
+              style: { borderRadius: 12 },
+              barPercentage: 0.6,
+            }}
+            style={{ marginVertical: 8, borderRadius: 12 }}
+          />
+
+          
+          <View style={styles.toggleGroup}>
+            <TouchableOpacity 
+              style={[styles.toggleBtn, activeChart === 'Volume' && { backgroundColor: '#007AFF' }]}
+              onPress={() => setActiveChart('Volume')}
+            >
+              <Text style={[styles.toggleBtnText, activeChart === 'Volume' && styles.toggleBtnTextActive]}>
+                Volume
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.toggleBtn, activeChart === 'Reps' && { backgroundColor: '#FF9500' }]}
+              onPress={() => setActiveChart('Reps')}
+            >
+              <Text style={[styles.toggleBtnText, activeChart === 'Reps' && styles.toggleBtnTextActive]}>
+                Reps
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -156,23 +265,6 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
         onChangeText={handleSearch}
         />
 
-      <View style={styles.aiContainer}>
-        <TouchableOpacity 
-          style={styles.aiButton} 
-          onPress={getAiWorkoutAdvice}
-          disabled={aiLoading}
-        >
-          <Text style={styles.aiButtonText}>💪 Get AI Trainer Advice 💪</Text>
-        </TouchableOpacity>
-        {aiLoading && <ActivityIndicator size="small" color="#007AFF" style={{ marginTop: 10 }} />}
-        
-        {aiAdvice && (
-          <View style={styles.aiAdviceBox}>
-            <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
-          </View>
-        )}
-      </View>
-
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" />
       ) : (
@@ -180,6 +272,7 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
           data={filteredWorkouts}
           keyExtractor={(item) => item.workoutId.toString()}
           renderItem={renderWorkout}
+          ListHeaderComponent={renderListHeader()}
           contentContainerStyle={{ paddingBottom: 20 }}
           ListEmptyComponent={<Text style={styles.emptyText}>No workouts logged yet.</Text>}
         />
@@ -193,12 +286,22 @@ const styles = StyleSheet.create({
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
 
 
+  headerContainer: { marginBottom: 10 },
+
   aiContainer: { marginBottom: 20, alignItems: 'center' },
   aiButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25, shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 4 },
   aiButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   aiAdviceBox: { marginTop: 15, backgroundColor: '#e6f2ff', padding: 15, borderRadius: 10, borderWidth: 1, borderColor: '#b3d9ff', width: '100%' },
   aiAdviceText: { color: '#004080', fontSize: 15, lineHeight: 22, fontStyle: 'italic', textAlign: 'center' },
 
+
+  chartWrapper: { backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  chartTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 5, color: '#333' },
+
+  toggleGroup: { flexDirection: 'row', marginTop: 15, width: '100%', justifyContent: 'space-evenly' },
+  toggleBtn: { paddingVertical: 8, paddingHorizontal: 25, borderRadius: 20, backgroundColor: '#e0e0e0' },
+  toggleBtnText: { fontWeight: 'bold', color: '#555' },
+  toggleBtnTextActive: { color: '#fff' },
 
   card: { backgroundColor: 'white', padding: 15, borderRadius: 10, marginBottom: 15, elevation: 2 },
   cardHeader: { borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 10, marginBottom: 10 },
