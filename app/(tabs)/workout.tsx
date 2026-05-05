@@ -43,6 +43,21 @@ export default function WorkoutScreen() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   
   const [exerciseSearch, setExerciseSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const bodyParts = Array.from(new Set(availableExercises.map(ex => ex.bodyPart).filter(Boolean)));
+
+  const filteredExercises = availableExercises.filter(ex => {
+    const matchesSearch = ex.name.toLowerCase().includes(exerciseSearch.toLowerCase());
+    const matchesCategory = selectedCategory ? ex.bodyPart === selectedCategory : true;
+    return matchesSearch && matchesCategory;
+  });
+
+  const displayExercises = exerciseSearch 
+    ? filteredExercises 
+    : filteredExercises
+        .sort((a, b) => a.name.length - b.name.length)
+        .slice(0, 30);
 
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
   const API_URL = 'http://192.168.1.166:5226/api'; 
@@ -249,10 +264,36 @@ const formatTime = (seconds: number) => {
                 onChangeText={setExerciseSearch}
               />
 
+              <View style={{ height: 60, marginVertical: 10 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContainer}>
+                  
+                  {/* "All" Button */}
+                  <TouchableOpacity 
+                    style={[styles.categoryBtn, !selectedCategory && styles.categoryBtnActive]} 
+                    onPress={() => setSelectedCategory(null)}
+                  >
+                    <Text style={[styles.categoryText, !selectedCategory && styles.categoryTextActive]}>All</Text>
+                  </TouchableOpacity>
+
+                  {/* Dynamic Body Part Buttons */}
+                  {bodyParts.map(part => (
+                    <TouchableOpacity 
+                      key={part} 
+                      style={[styles.categoryBtn, selectedCategory === part && styles.categoryBtnActive]} 
+                      onPress={() => setSelectedCategory(part)}
+                    >
+                      <Text style={[styles.categoryText, selectedCategory === part && styles.categoryTextActive]}>
+                        {/* Capitalize the first letter */}
+                        {part.charAt(0).toUpperCase() + part.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
               <FlatList
-                data={availableExercises.filter(ex => 
-                  ex.name.toLowerCase().includes(exerciseSearch.toLowerCase())
-                )}
+                data={displayExercises}
+
                 keyExtractor={(item) => item.exerciseId.toString()}
                 renderItem={({ item }) => (
                   <TouchableOpacity 
@@ -405,4 +446,28 @@ const styles = StyleSheet.create({
     padding: 15, alignItems: 'center', marginTop: 10 
   },
   backBtnText: { color: '#007AFF', fontSize: 16 },
+
+  categoryContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  categoryBtn: {
+    backgroundColor: '#eee',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    height: 40,
+    justifyContent: 'center',
+  },
+  categoryBtnActive: {
+    backgroundColor: '#007AFF',
+  },
+  categoryText: {
+    color: '#555',
+    fontWeight: 'bold',
+  },
+  categoryTextActive: {
+    color: '#fff',
+  },
 });
