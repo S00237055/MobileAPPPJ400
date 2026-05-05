@@ -172,6 +172,8 @@ export default function DiaryScreen() {
         <View style={styles.macroContainer}>
           <Text style={styles.macroText}>🔥 {item.calories} kcal</Text>
           <Text style={styles.macroText}>🥩 {item.proteinGrams}g Protein</Text>
+          <Text style={styles.macroText}>🍞 {item.carbsGrams}g Carbs</Text> 
+          <Text style={styles.macroText}>🥑 {item.fatGrams}g Fat</Text>
         </View>
       </View>
     );
@@ -409,7 +411,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   foodName: { fontSize: 16, fontWeight: 'bold', color: '#222', flex: 1 },
   dateText: { fontSize: 12, color: '#888', marginLeft: 10 },
-  macroContainer: { flexDirection: 'row', gap: 15 },
+  macroContainer: { flexDirection: 'row', gap: 15, flexWrap: 'wrap' },
   macroText: { fontSize: 14, color: '#555', fontWeight: '500' },
 
 

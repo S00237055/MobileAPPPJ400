@@ -7,6 +7,8 @@ interface SavedFoodLog {
     foodName: string;
     calories: number;
     proteinGrams: number;
+    carbsGrams: number;
+    fatGrams: number;
     dateEaten: string;  
 }
 
@@ -21,7 +23,7 @@ export default function WeekDetailsScreen() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://localhost:5226/api/FoodLogs`);
+                const response = await fetch(`http://192.168.1.166:5226/api/FoodLogs`);
                 const data = await response.json();
                 setLogs(data);
             } catch (error) {
@@ -45,20 +47,6 @@ export default function WeekDetailsScreen() {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
-
-    // const getWeeklyFoods = () => {
-    //     if (!safeDate) return [];
-
-    //     const weekStart = new Date(safeDate as string);
-    //     const weekEnd = new Date(weekStart);
-    //     weekEnd.setDate(weekStart.getDate() + 6);
-    //     weekEnd.setHours(23, 59, 59, 999);
-
-    //     return logs.filter(log => {
-    //         const logTime = new Date(log.dateEaten).getTime();
-    //         return logTime >= weekStart.getTime() && logTime <= weekEnd.getTime();
-    //     });
-    // };
 
     const weeklyFoods = getLogsForDateRange(weekStart, weekEnd);
 
@@ -87,7 +75,7 @@ export default function WeekDetailsScreen() {
         Compare my progress between the two weeks. Keep it to 3 short sentences, highlight the differences,  and suggest one specific improvement I can make next week.`;
 
         try {
-            const response = await fetch('http://localhost:5226/api/Ai/WeeklyComparison', {
+            const response = await fetch('http://192.168.1.166:5226/api/Ai/WeeklyComparison', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: prompt })
@@ -129,6 +117,8 @@ export default function WeekDetailsScreen() {
                 <View style={styles.macroContainer}>
                     <Text style={styles.macroText}>🔥 {item.calories} kcal</Text>
                     <Text style={styles.macroText}>🥩 {item.proteinGrams}g Protein</Text>
+                    <Text style={styles.macroText}>🍞 {item.carbsGrams}g Carbs</Text> 
+    <Text style={styles.macroText}>🥑 {item.fatGrams}g Fat</Text>
                 </View>
             </View>
         );
@@ -204,7 +194,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   foodName: { fontSize: 16, fontWeight: 'bold', color: '#222', flex: 1 },
   dateText: { fontSize: 12, color: '#888', marginLeft: 10 },
-  macroContainer: { flexDirection: 'row', gap: 15 },
+  macroContainer: { flexDirection: 'row', gap: 15, flexWrap: 'wrap' },
   macroText: { fontSize: 14, color: '#555', fontWeight: '500' },
   emptyText: { textAlign: 'center', marginTop: 50, fontStyle: 'italic', color: '#888' }
 });

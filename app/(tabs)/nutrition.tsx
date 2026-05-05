@@ -5,15 +5,15 @@ import {
   Alert,
   Button,
   FlatList,
+  Image,
   Keyboard,
+  Modal,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Image,
-  Modal
+  View
 } from 'react-native';
 
 interface FoodItem {
@@ -132,13 +132,16 @@ export default function NutritionScreen() {
     const foodName = item.product_name_en || item.product_name || 'Unknown Product';
     const calories = parseInt(item.nutriments?.['energy-kcal_100g']) || 0;
     const protein = parseFloat(item.nutriments?.proteins_100g) || 0;
-
+    const carbs = parseFloat(item.nutriments?.carbohydrates_100g) || 0;
+    const fat = parseFloat(item.nutriments?.fat_100g) || 0;
     
     const payload = {
       userId: 1, // Change this to the ID of the logged-in user!
       foodName: foodName,
       calories: calories,
-      proteinGrams: protein
+      proteinGrams: protein,
+      carbsGrams: carbs,
+      fatGrams: fat
     };
 
     try {
@@ -263,7 +266,7 @@ const openScanner = () => {
         }
         contentContainerStyle={styles.listContainer}
       />
-    <Text>My Nutrition Page</Text>
+    
       
       
 

@@ -277,46 +277,49 @@ const formatTime = (seconds: number) => {
             
             
             <View style={styles.detailsContainer}>
-              <Text style={styles.header}>{viewingExercise.name}</Text>
-              <Text style={styles.subHeader}>Target: {viewingExercise.bodyPart}</Text>
-              
-              {viewingExercise.gifUrl && (
-                <View style={{ alignItems: 'center', marginVertical: 10 }}>
-                  <Image
-                   source={{ uri: viewingExercise.gifUrl }} 
-                   style={{ width: 250, height: 250, borderRadius: 10}} 
-                   resizeMode='contain'
-                   />
+              <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+                <Text style={styles.header}>{viewingExercise.name}</Text>
+                <Text style={styles.subHeader}>Target: {viewingExercise.bodyPart}</Text>
+                
+                {viewingExercise.gifUrl && (
+                  <View style={{ alignItems: 'center', marginVertical: 10 }}>
+                    <Image
+                    source={{ uri: viewingExercise.gifUrl }} 
+                    style={{ width: 250, height: 250, borderRadius: 10}} 
+                    resizeMode='contain'
+                    />
 
+                  </View>
+                )}
+                <View style={styles.instructionBox}>
+                  <Text style={styles.instructionTitle}>How to do it:</Text>
+                  <Text style={styles.instructionText}>
+                    {viewingExercise.instructions || "No instructions available for this exercise yet."}
+                  </Text>
                 </View>
-              )}
-              <View style={styles.instructionBox}>
-                <Text style={styles.instructionTitle}>How to do it:</Text>
-                <Text style={styles.instructionText}>
-                  {viewingExercise.instructions || "No instructions available for this exercise yet."}
-                </Text>
+              </ScrollView>  
+
+              <View style={styles.fixedBottomContainer}>
+                <TouchableOpacity 
+                  style={styles.selectButton} 
+                  onPress={() => {
+                    setSelectedExercise(viewingExercise); 
+                    setViewingExercise(null);             
+                    setModalVisible(false);               
+                    setExerciseSearch('');
+                  }}
+                >
+                  <Text style={styles.btnText}>Select This Exercise</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.backButton} 
+                  onPress={() => setViewingExercise(null)} 
+                >
+                  <Text style={styles.backBtnText}>Back to List</Text>
+                </TouchableOpacity>
               </View>
-
-              {/* ACTION BUTTONS */}
-              <TouchableOpacity 
-                style={styles.selectButton} 
-                onPress={() => {
-                  setSelectedExercise(viewingExercise); 
-                  setViewingExercise(null);             
-                  setModalVisible(false);               
-                  setExerciseSearch('');
-                }}
-              >
-                <Text style={styles.btnText}>Select This Exercise</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.backButton} 
-                onPress={() => setViewingExercise(null)} 
-              >
-                <Text style={styles.backBtnText}>Back to List</Text>
-              </TouchableOpacity>
-            </View>
+              </View>
           )}
         </View>
       </Modal>
@@ -387,9 +390,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#eee'
   },
   instructionTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 10 },
-  instructionText: { fontSize: 16, lineHeight: 24, color: '#333' },
+  instructionText: { fontSize: 16, lineHeight: 24, color: '#333', flexWrap: 'wrap', flexShrink: 1 },
+  fixedBottomContainer: {
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderColor: '#eee',
+    backgroundColor: '#fff',
+  },
+
   selectButton: { 
-    backgroundColor: '#007AFF', padding: 18, borderRadius: 10, alignItems: 'center', marginTop: 30 
+    backgroundColor: '#007AFF', padding: 18, borderRadius: 10, alignItems: 'center', 
   },
   backButton: { 
     padding: 15, alignItems: 'center', marginTop: 10 
