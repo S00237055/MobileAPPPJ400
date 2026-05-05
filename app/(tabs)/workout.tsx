@@ -61,7 +61,7 @@ export default function WorkoutScreen() {
 
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
   const API_URL = 'http://192.168.1.166:5226/api'; 
-  const USER_ID = 3; 
+  const USER_ID = 1; 
 
   const handleLogout = async () => {
     try{
@@ -98,7 +98,11 @@ const formatTime = (seconds: number) => {
 
   const loadUserId = async () => {
     const id = await AsyncStorage.getItem('userId');
-    if (id) setUserId(parseInt(id));
+    if (id) {
+        setUserId(parseInt(id));
+    } else {
+        setUserId(USER_ID); 
+    }
   };
 
   const fetchExercises = async () => {

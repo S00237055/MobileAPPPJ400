@@ -10,7 +10,7 @@ export default function LoginScreen() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  const API_URL = 'http://localhost:5226/api/User/login';
+  const API_URL = 'http://192.168.1.166:5226/api/User/login';
 
   const handleLogin = async () => {
     if (!username || !password) {
