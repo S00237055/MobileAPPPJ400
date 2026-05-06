@@ -5,7 +5,7 @@ import {
   Button, Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 interface Exercise {
   exerciseId: number;
@@ -41,6 +41,9 @@ export default function WorkoutScreen() {
   // Timer
   const [timer, setTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  const [overallTimer, setOverallTimer] = useState(0);
+  const [isWorkoutActive, setIsWorkoutActive] = useState(false);
   
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -63,15 +66,15 @@ export default function WorkoutScreen() {
   const API_URL = 'http://192.168.1.166:5226/api'; 
   const USER_ID = 1; 
 
-  const handleLogout = async () => {
-    try{
-      await AsyncStorage.removeItem('userId');
-      router.replace('/login');
-    } catch (error) {
-      console.error('Error during logout:', error);
+
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    if (params.startWorkout === 'true') {
+      setIsWorkoutActive(true);
+      router.setParams({ startWorkout: '' });
     }
-    
-  };
+  }, [params.startWorkout]);
 
   
   useEffect(() => {
@@ -81,13 +84,21 @@ export default function WorkoutScreen() {
 
   useEffect(() => {
   let interval: any;
-  if (isTimerRunning) {
+  if (isTimerRunning || isWorkoutActive) {
     interval = setInterval(() => {
-      setTimer((prev) => prev + 1);
+      if (isTimerRunning) {
+          setTimer((prev) => prev + 1);
+        }
+        if (isWorkoutActive) {
+          setOverallTimer((prev) => prev + 1);
+        }
+        
+      
     }, 1000);
+    
   }
   return () => clearInterval(interval); // Cleanup when stopped
-}, [isTimerRunning]);
+}, [isTimerRunning, isWorkoutActive]);
 
 
 const formatTime = (seconds: number) => {
@@ -132,6 +143,9 @@ const formatTime = (seconds: number) => {
     setWorkoutSets([...workoutSets, newSet]);
     setWeight(''); 
     setReps('');
+
+    setTimer(0);
+    setIsTimerRunning(true)
   };
 
   const handleFinishWorkout = async () => {
@@ -143,11 +157,13 @@ const formatTime = (seconds: number) => {
 
     if (workoutSets.length === 0) return;
 
-    
+    setIsWorkoutActive(false);
+    setIsTimerRunning(false);
+
     const payload = {
       userId: userId,
       date: new Date().toISOString(),
-      notes: "Logged from Mobile App",
+      notes: `Duration: ${formatTime(overallTimer)}`,
       workoutSets: workoutSets.map(s => ({
         exerciseId: s.exerciseId,
         setNumber: s.setNumber,
@@ -164,9 +180,10 @@ const formatTime = (seconds: number) => {
       });
 
       if (response.ok) {
-        Alert.alert('Success', 'Workout Saved!');
+        Alert.alert('Success', `Workout Saved! Total time: ${formatTime(overallTimer)}`);
         setWorkoutSets([]); 
         setSelectedExercise(null);
+        setOverallTimer(0);
       } else {
         const err = await response.text();
         Alert.alert('Error', 'Failed to save: ' + err);
@@ -178,7 +195,25 @@ const formatTime = (seconds: number) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Log Workout</Text>
+      <View style={{ alignItems: 'center', marginBottom: 15 }}>
+        {isWorkoutActive ? (
+          <>
+            <Text style={{ fontSize: 16, color: '#666' }}>Workout Duration</Text>
+            <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#007AFF' }}>
+              {formatTime(overallTimer)}
+            </Text>
+          </>
+        ) : (
+          <TouchableOpacity 
+            style={{ backgroundColor: '#007AFF', padding: 15, borderRadius: 10, width: '100%', alignItems: 'center' }}
+            onPress={() => setIsWorkoutActive(true)}
+          >
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Start Workout Manually</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <Text style={styles.header}>Rest Timer</Text>
 
         {/* REST TIMER */}
       <View style={styles.timerContainer}>
@@ -368,9 +403,6 @@ const formatTime = (seconds: number) => {
           )}
         </View>
       </Modal>
-      <View style={{ marginTop: 40 }}>
-        <Button title="Logout" onPress={handleLogout} color="#ff3b30" />
-      </View>
     </View>
   );
 }

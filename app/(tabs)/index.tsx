@@ -19,7 +19,7 @@ export default function HomeScreen() {
       
       <TouchableOpacity 
         style={[styles.menuButton, { backgroundColor: theme.tint }]}
-        onPress={() => router.push('/(tabs)/workout')} // <--- Navigate to app/workout.tsx
+        onPress={() => router.push({ pathname: '/workout', params: { startWorkout: 'true' } })}
       >
         <Text style={styles.btnText}>💪 Log Workout</Text>
       </TouchableOpacity>

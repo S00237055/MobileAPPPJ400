@@ -11,7 +11,7 @@ const primaryOrangeDark = '#FF7043';
 export const Colors = {
   light: {
     text: '#11181C',
-    background: '#F5F7FA',
+    background: '#F4F6F8',
     cardBackground: '#FFFFFF',
     tint: primaryOrangeDark,
     icon: '#687076',
@@ -35,13 +35,9 @@ export const Colors = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
