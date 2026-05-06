@@ -31,13 +31,49 @@ interface FoodItem {
 
 export default function NutritionScreen() {
 
+  const EXAMPLE_FOODS = [
+  {
+    id: 'example-1',
+    product_name_en: 'Apple (Raw)',
+    brands: 'Generic',
+    nutriments: {
+      'energy-kcal_100g': 52,
+      proteins_100g: 0.3,
+      carbohydrates_100g: 14,
+      fat_100g: 0.2,
+    }
+  },
+  {
+    id: 'example-2',
+    product_name_en: 'Grilled Chicken Breast',
+    brands: 'Generic',
+    nutriments: {
+      'energy-kcal_100g': 165,
+      proteins_100g: 31,
+      carbohydrates_100g: 0,
+      fat_100g: 3.6,
+    }
+  },
+  {
+    id: 'example-3',
+    product_name_en: 'Rolled Oats',
+    brands: 'Quaker',
+    nutriments: {
+      'energy-kcal_100g': 389,
+      proteins_100g: 16.9,
+      carbohydrates_100g: 66.3,
+      fat_100g: 6.9,
+    }
+  }
+];
+
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [foodInfo, setFoodInfo] = useState<any>(null);
 
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [nutritionData, setNutritionData] = useState<any[]>([]);
+  const [nutritionData, setNutritionData] = useState<any[]>(EXAMPLE_FOODS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +83,11 @@ export default function NutritionScreen() {
 
 
   const fetchNutritionData = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      setNutritionData(EXAMPLE_FOODS);
+    
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -67,7 +107,7 @@ export default function NutritionScreen() {
         ? { headers: requestHeaders } 
         : undefined;
 
-      const targetUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=30&fields=id,product_name,product_name_en,brands,nutriments&lc=en`;
+      const targetUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQuery)}&search_simple=1&action=process&json=1&page_size=30&fields=id,product_name,product_name_en,brands,nutriments,image_url,image_front_small_url&lc=en`;
       
       
 
@@ -75,13 +115,13 @@ export default function NutritionScreen() {
   ? `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` 
   : targetUrl;
         
-      const response = await fetch(fetchUrl, fetchOptions);
-      if (!response.ok){
-        throw new Error(`Server Error: ${response.status}`);
-      }
+      // const response = await fetch(fetchUrl, fetchOptions);
+      // if (!response.ok){
+      //   throw new Error(`Server Error: ${response.status}`);
+      // }
 
       
-      const data = await response.json();
+      const data = await fetchWithRetry(fetchUrl, fetchOptions, 3, 1000);
 
       if (data.products && data.products.length > 0) {
         setNutritionData(data.products);
@@ -198,6 +238,14 @@ const getSafetyStatus = (novaGroup: number) => {
   }
 };
 
+const handleSearchChange = (text: string) => {
+  setSearchQuery(text);
+  
+  if (text.trim() === '') {
+    setNutritionData(EXAMPLE_FOODS);
+    setError(null);
+  }
+}
 const openScanner = () => {
   if (!permission?.granted) {
     requestPermission();
@@ -212,11 +260,26 @@ const openScanner = () => {
     const carbs = item.nutriments?.carbohydrates_100g || 'N/A';
     const fat = item.nutriments?.fat_100g || 'N/A';
 
+    const imageUrl = item.image_url || item.image_front_small_url || item.image_front_thumb_url;
+
     return (
       <View style={styles.card}>
-        <Text style={styles.foodName}>{item.product_name_en || item.product_name || 'Unknown Product'}</Text>
-        <Text style={styles.brandText}>Brand: {item.brands || 'Unknown'}</Text>
+        <View style={styles.cardHeader}>
+          
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.listImage} />
+          ) : (
+            <View style={styles.placeholderImage}>
+              <Text style={{ fontSize: 24 }}>🍽️</Text>
+            </View>
+          )}
         
+          <View style={styles.cardInfo}>
+            <Text style={styles.foodName}>{item.product_name_en || item.product_name || 'Unknown Product'}</Text>
+            <Text style={styles.brandText}>Brand: {item.brands || 'Unknown'}</Text>
+          </View>
+        </View>
+
         <View style={styles.macroContainer}>
           <Text style={styles.macroText}>🔥 Calories: {energy} kcal</Text>
           <Text style={styles.macroText}>🥩 Protein: {protein}g</Text>
@@ -241,7 +304,7 @@ const openScanner = () => {
           style={styles.input}
           placeholder="Search for a food item (e.g., Apple, Chicken)"
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={handleSearchChange}
           onSubmitEditing={fetchNutritionData}
           placeholderTextColor="#888"
         />
@@ -345,6 +408,22 @@ const openScanner = () => {
     </View>
   );
 }
+
+const fetchWithRetry = async (url: string, options?: any, retries = 3, backoff = 1000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`Server Error: ${response.status}`);
+      }
+      return await response.json();
+    } catch (err: any) {
+      if (i === retries - 1) throw err;
+      console.log(`API failed (${err.message}), retrying in ${backoff * (i + 1)}ms...`);
+      await new Promise(res => setTimeout(res, backoff * (i + 1))); 
+    }
+  }
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -463,5 +542,32 @@ const styles = StyleSheet.create({
   statsContainer: { backgroundColor: 'white', padding: 20, borderRadius: 12, width: '100%', marginBottom: 30, elevation: 3 },
   statText: { fontSize: 18, marginBottom: 10, color: '#555' },
   scanAgainButton: { backgroundColor: '#007AFF', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 30 },
-  scanAgainText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
+  scanAgainText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+
+
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  listImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#eee',
+  },
+  placeholderImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#eee',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
 });
