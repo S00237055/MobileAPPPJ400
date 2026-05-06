@@ -14,7 +14,7 @@ export default function AuthGateway() {
         
         if (userId) {
           
-          router.replace('/(tabs)/workout'); 
+          router.replace('/(tabs)'); 
         } else {
           
           router.replace('/login');
