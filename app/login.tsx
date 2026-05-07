@@ -10,7 +10,7 @@ export default function LoginScreen() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  const API_URL = 'http://192.168.1.166:5226/api/User/login';
+  const API_URL = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/login';
 
   const handleLogin = async () => {
     if (!username || !password) {

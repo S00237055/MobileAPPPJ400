@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, 
 import { Dimensions } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SavedFoodLog {
   logId: number;
@@ -28,12 +29,13 @@ export default function DiaryScreen() {
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   
   const fetchHistory = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://192.168.1.166:5226/api/FoodLogs');
+      const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/FoodLogs/user/${currentUserId}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch data');
@@ -50,8 +52,24 @@ export default function DiaryScreen() {
   };
 
   useEffect(() => {
-    fetchHistory();
+    const fetchUserId = async () => {
+      try {
+        const storedId = await AsyncStorage.getItem('userId');
+        if (storedId) {
+          setCurrentUserId(parseInt(storedId));
+        }
+      } catch (error) {
+        console.error('Error reading user ID from storage', error);
+      }
+    };
+    fetchUserId();
   }, []);
+
+  useEffect(() => {
+    if (currentUserId !== null) {
+      fetchHistory();
+    }
+  }, [currentUserId]);
 
   //Filtering
   const getFilteredLogs = () => {
@@ -134,7 +152,7 @@ export default function DiaryScreen() {
     try {
     
       
-      const response = await fetch('http://192.168.1.166:5226/api/Ai/DietAdvice', {
+      const response = await fetch('https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/Ai/DietAdvice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: prompt })

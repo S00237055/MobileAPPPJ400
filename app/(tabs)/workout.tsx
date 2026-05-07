@@ -63,7 +63,7 @@ export default function WorkoutScreen() {
         .slice(0, 30);
 
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
-  const API_URL = 'http://192.168.1.166:5226/api'; 
+  const API_URL = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api'; 
   const USER_ID = 1; 
 
 
@@ -159,6 +159,8 @@ const formatTime = (seconds: number) => {
 
     setIsWorkoutActive(false);
     setIsTimerRunning(false);
+
+    
 
     const payload = {
       userId: userId,

@@ -24,7 +24,7 @@ export default function RegisterScreen() {
     setErrorMessage('');
 
 
-    const backendUrl = 'http://192.168.1.166:5226/api/User/register';
+    const backendUrl = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/register';
     try {
       const response = await fetch(backendUrl, {
         method: 'POST',

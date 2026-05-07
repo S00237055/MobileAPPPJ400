@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SavedFoodLog {
     logId: number;
@@ -23,7 +24,11 @@ export default function WeekDetailsScreen() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://192.168.1.166:5226/api/FoodLogs`);
+
+                const storedId = await AsyncStorage.getItem('userId');
+                if (!storedId) return;
+
+                const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/FoodLogs/user/${storedId}`);
                 const data = await response.json();
                 setLogs(data);
             } catch (error) {
@@ -75,7 +80,7 @@ export default function WeekDetailsScreen() {
         Compare my progress between the two weeks. Keep it to 3 short sentences, highlight the differences,  and suggest one specific improvement I can make next week.`;
 
         try {
-            const response = await fetch('http://192.168.1.166:5226/api/Ai/WeeklyComparison', {
+            const response = await fetch('https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/Ai/WeeklyComparison', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: prompt })

@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 interface UserProfile {
   userId: number;
   username: string;
@@ -15,23 +15,34 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  
-  // State for the edit form
+
   const [editWeight, setEditWeight] = useState('');
   const [editGoal, setEditGoal] = useState('');
   
   const router = useRouter();
 
-  // Replace with dynamic ID from your auth state
-  const currentUserId = 1; 
+
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchUserProfile();
+    const loadProfile = async () => {
+      const storedId = await AsyncStorage.getItem('userId');
+      if (storedId) {
+        setCurrentUserId(parseInt(storedId));
+      }
+    };
+    loadProfile();
   }, []);
+
+  useEffect(() => {
+    if (currentUserId !== null) {
+      fetchUserProfile();
+    }
+  }, [currentUserId]);
 
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch(`http://192.168.1.166:5226/api/User/${currentUserId}`);
+      const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/${currentUserId}`);
       if (!response.ok) throw new Error('Failed to fetch user data');
 
       const data = await response.json();
@@ -48,7 +59,7 @@ export default function ProfileScreen() {
 
   const handleSaveProfile = async () => {
     try {
-      const response = await fetch(`http://192.168.1.166:5226/api/User/${currentUserId}/profile`, {
+      const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/${currentUserId}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,8 @@ import {
   View
 } from 'react-native';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 interface FoodItem {
   id: string;
   product_name?: string;
@@ -30,6 +32,22 @@ interface FoodItem {
 }
 
 export default function NutritionScreen() {
+
+  const [currentUserId, setCurrentUserId] = useState(1);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const storedId = await AsyncStorage.getItem('userId');
+        if (storedId) {
+          setCurrentUserId(parseInt(storedId)); // Updates with the REAL logged-in user
+        }
+      } catch (error) {
+        console.error('Error reading user ID from storage', error);
+      }
+    };
+    fetchUserId();
+  }, []);
 
   const EXAMPLE_FOODS = [
   {
@@ -176,7 +194,7 @@ export default function NutritionScreen() {
     const fat = parseFloat(item.nutriments?.fat_100g) || 0;
     
     const payload = {
-      userId: 1, // Change this to the ID of the logged-in user!
+      userId: currentUserId, // Change this to the ID of the logged-in user!
       foodName: foodName,
       calories: calories,
       proteinGrams: protein,
@@ -186,7 +204,7 @@ export default function NutritionScreen() {
 
     try {
       
-      const response = await fetch('http://192.168.1.166:5226/api/FoodLogs', {
+      const response = await fetch('https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/FoodLogs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
