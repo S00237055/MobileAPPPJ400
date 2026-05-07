@@ -34,6 +34,8 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
   const screenWidth = Dimensions.get("window").width;
 
+  const [userProfile, setUserProfile] = useState<{ weight: number | null, goal: string | null } | null>(null);
+
   useFocusEffect(
     useCallback(() => {
     fetchHistory();
@@ -42,12 +44,21 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
   const fetchHistory = async () => {
     try {
+      setAiAdvice(null);
       setLoading(true);
       
       const userIdStr = await AsyncStorage.getItem('userId');
       if (!userIdStr) { setLoading(false); return; }
       const myUserId = parseInt(userIdStr);
 
+      const profileResponse = await fetch(`${API_URL}/User/${myUserId}`);
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        setUserProfile({
+          weight: profileData.currentWeight,
+          goal: profileData.goalType
+        });
+      }
       // Fetch all workouts
       const response = await fetch(`${API_URL}/Workouts`); 
 
@@ -81,8 +92,8 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
       return;
     }
 
-    setAiLoading(true);
     setAiAdvice(null);
+    setAiLoading(true);
 
     // Grab the 5 most recent workouts so the prompt isn't too massive
     const recentWorkouts = filteredWorkouts.slice(0, 5);
@@ -93,7 +104,10 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
         return `Date: ${new Date(w.date).toLocaleDateString()}. Exercises: ${setsStr}. Notes: ${w.notes || 'None'}`;
     }).join('\n');
 
-    const prompt = `I am tracking my gym workouts. Here are my most recent sessions:\n${workoutSummary}\nAct as an expert personal trainer. In 2 or 3 short sentences, analyze my routine and give me a specific tip to improve my strength, form, or workout split.`;
+    const profileContext = userProfile 
+      ? `I weigh ${userProfile.weight}kg and my goal is to ${userProfile.goal}. ` 
+      : "";
+    const prompt = `Context: ${profileContext}I am tracking my gym workouts. Here are my most recent sessions:\n${workoutSummary}\nAct as an expert personal trainer. In 2 or 3 short sentences, analyze my routine based on my weight and goal, and give me a specific tip to improve.`;
 
     try {
       const response = await fetch(`${API_URL}/Ai/WorkoutAdvice`, {

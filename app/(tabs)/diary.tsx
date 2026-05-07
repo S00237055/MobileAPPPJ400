@@ -30,8 +30,10 @@ export default function DiaryScreen() {
   const [aiLoading, setAiLoading] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  
+  const [userProfile, setUserProfile] = useState<{ weight: number | null, goal: string | null } | null>(null);
+
   const fetchHistory = async () => {
+    setAiAdvice(null);
     setLoading(true);
     setError(null);
     try {
@@ -52,17 +54,28 @@ export default function DiaryScreen() {
   };
 
   useEffect(() => {
-    const fetchUserId = async () => {
+    const fetchUserData = async () => {
       try {
         const storedId = await AsyncStorage.getItem('userId');
         if (storedId) {
-          setCurrentUserId(parseInt(storedId));
+          const myId = parseInt(storedId);
+          setCurrentUserId(myId);
+
+          
+          const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/${myId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserProfile({
+              weight: data.currentWeight,
+              goal: data.goalType
+            });
+          }
         }
       } catch (error) {
-        console.error('Error reading user ID from storage', error);
+        console.error('Error fetching user data', error);
       }
     };
-    fetchUserId();
+    fetchUserData();
   }, []);
 
   useEffect(() => {
@@ -140,14 +153,17 @@ export default function DiaryScreen() {
 
     
 
+    setAiAdvice(null); 
     setAiLoading(true);
-    setAiAdvice(null);
 
-   
+   const profileContext = userProfile 
+      ? `I currently weigh ${userProfile.weight}kg and my goal is to ${userProfile.goal}. `
+      : "";
+
     const foodList = filteredLogs.map(log => log.foodName).join(', ');
     
     
-    const prompt = `I am tracking my nutrition. Today I ate: ${foodList}. My total intake is ${totalCalories} calories and ${totalProtein}g of protein, ${totalCarbs}g of carbs, and ${totalFat}g of fat. In 2 short sentences, tell me how I can improve this diet for better health and muscle growth.`;
+    const prompt = `Context: ${profileContext}Today I ate: ${foodList}. My total intake is ${totalCalories} calories and ${totalProtein}g of protein. Based on my weight and goal, give me 2 short sentences of specific advice.`;
 
     try {
     
@@ -172,8 +188,11 @@ export default function DiaryScreen() {
 
     } catch (error: any) {
       Alert.alert("AI Error", error.message || "Could not get advice right now.");
-      setAiLoading(false);
-    }
+      Alert.alert("AI Error", "Could not get advice.");
+  } finally {
+    
+    setAiLoading(false);
+  }
   };
 
   const renderLog = ({ item }: { item: SavedFoodLog }) => {
