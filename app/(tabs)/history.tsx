@@ -28,7 +28,7 @@ const [filteredWorkouts, setFilteredWorkouts] = useState<Workout[]>([]);
 const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const [activeChart, setActiveChart] = useState<'Volume' | 'Reps'>('Volume');
+  const [activeChart, setActiveChart] = useState<'Volume' | 'Reps' | 'Duration'>('Volume');
 
   const API_URL = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api'; 
 
@@ -109,47 +109,66 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
       : "";
     const prompt = `Context: ${profileContext}I am tracking my gym workouts. Here are my most recent sessions:\n${workoutSummary}\nAct as an expert personal trainer. In 2 or 3 short sentences, analyze my routine based on my weight and goal, and give me a specific tip to improve.`;
 
-    try {
-      const response = await fetch(`${API_URL}/Ai/WorkoutAdvice`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
+    let attempt = 0;
+    const maxAttempts = 3;
+    let success = false;
 
-      const data = await response.json();
-      setAiAdvice(data.advice);
-
-    } catch (error: any) {
-      console.error(error);
-      if (error.message && error.message.includes("503")) {
-         Alert.alert("AI Trainer Busy", "The AI trainer is currently helping too many people! Please wait a minute and try again.");
-      } else {
-         Alert.alert("AI Error", "Could not connect to the AI service right now.");
-      }
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const handleSearch = (text: string) => {
-    setSearchText(text);
-    if (text) {
-        const filtered = workouts.filter(w => 
+    while (attempt < maxAttempts && !success) {
+      try {
+        const response = await fetch(`${API_URL}/Ai/WorkoutAdvice`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompt })
+        });
         
-        w.notes?.toLowerCase().includes(text.toLowerCase()) ||
-        w.workoutSets.some(set => set.exercise?.name.toLowerCase().includes(text.toLowerCase()))
-        );
-        setFilteredWorkouts(filtered);
-    } else {
-        
-        setFilteredWorkouts(workouts);
+        if (!response.ok) {
+          if (response.status === 503 && attempt < maxAttempts - 1) {
+              throw new Error("503_RETRY");
+          }
+          
+          const errorText = await response.text();
+          throw new Error(errorText);
+        }
+
+        const data = await response.json();
+        setAiAdvice(data.advice);
+        success = true
+
+      } catch (error: any) {
+        if (error.message === "503_RETRY") {
+            attempt++;
+            console.log(`AI Busy. Retrying... Attempt ${attempt} of ${maxAttempts}`);
+            await new Promise(resolve => setTimeout(resolve, 2500));
+        } else {
+            console.error(error);
+            if (error.message && error.message.includes("503")) {
+               Alert.alert("AI Trainer Busy", "The AI trainer is currently helping too many people! Please wait a minute and try again.");
+            } else {
+               Alert.alert("AI Error", "Could not connect to the AI service right now.");
+            }
+            break;
+        }
+      }
     }
+
+    
+    setAiLoading(false);
     };
+
+    const handleSearch = (text: string) => {
+      setSearchText(text);
+      if (text) {
+          const filtered = workouts.filter(w => 
+          
+          w.notes?.toLowerCase().includes(text.toLowerCase()) ||
+          w.workoutSets.some(set => set.exercise?.name.toLowerCase().includes(text.toLowerCase()))
+          );
+          setFilteredWorkouts(filtered);
+      } else {
+          
+          setFilteredWorkouts(workouts);
+      }
+      };
   
   const renderWorkout = ({ item }: { item: Workout }) => (
     <View style={styles.card}>
@@ -189,8 +208,22 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
       w.workoutSets.reduce((sum, set) => sum + set.reps, 0)
     );
 
-    const dataToDisplay = activeChart === 'Volume' ? volumeData : repsData;
-    const chartColor = activeChart === 'Volume' ? '#007AFF' : '#FF9500';
+    const durationData = recentWorkouts.map(w => {
+      if (w.notes && w.notes.includes('Duration:')) {
+        const match = w.notes.match(/Duration: (\d+):(\d+)/);
+        if (match) {
+          const mins = parseInt(match[1]);
+          const secs = parseInt(match[2]);
+          const totalMins = mins + (secs / 60);
+
+          return Math.max(1, Math.ceil(totalMins));
+        }
+      }
+      return 0; // Fallback to 0 if no duration was recorded
+    });
+
+    const dataToDisplay = activeChart === 'Volume' ? volumeData : activeChart === 'Reps' ? repsData : durationData;
+    const chartColor = activeChart === 'Volume' ? '#007AFF' : activeChart === 'Reps' ? '#FF9500' : '#34C759';
 
   
    
@@ -234,7 +267,7 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
               backgroundGradientFrom: '#ffffff',
               backgroundGradientTo: '#ffffff',
               decimalPlaces: 0,
-              color: (opacity = 1) => activeChart === 'Volume' ? `rgba(0, 122, 255, ${opacity})` : `rgba(255, 149, 0, ${opacity})`,
+              color: (opacity = 1) => `${chartColor}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`,
               fillShadowGradientOpacity: 1, 
               labelColor: () => `rgba(50, 50, 50, 1)`,
               style: { borderRadius: 12 },
@@ -245,6 +278,15 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
           
           <View style={styles.toggleGroup}>
+            <TouchableOpacity 
+              style={[styles.toggleBtn, activeChart === 'Duration' && { backgroundColor: '#34C759' }]}
+              onPress={() => setActiveChart('Duration')}
+            >
+              <Text style={[styles.toggleBtnText, activeChart === 'Duration' && styles.toggleBtnTextActive]}>
+                Duration
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity 
               style={[styles.toggleBtn, activeChart === 'Volume' && { backgroundColor: '#007AFF' }]}
               onPress={() => setActiveChart('Volume')}

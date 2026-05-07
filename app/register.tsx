@@ -9,6 +9,9 @@ export default function RegisterScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
  
+  const [weight, setWeight] = useState('');
+  const [goal, setGoal] = useState('Build Muscle');
+
   const [isLoading, setIsLoading] = useState(false);
 
     const [errorMessage, setErrorMessage] = useState('');
@@ -31,7 +34,12 @@ export default function RegisterScreen() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+            username, 
+            password, 
+            currentWeight: weight ? parseFloat(weight) : null, 
+            goalType: goal 
+        }),
       });
 
       if (response.ok) {
@@ -55,6 +63,41 @@ export default function RegisterScreen() {
 
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
+            <TextInput 
+            style={styles.input} 
+            placeholder="Current Weight (kg) - Optional" 
+            keyboardType="numeric"
+            value={weight}
+            onChangeText={setWeight}
+            />
+
+            <Text style={{ alignSelf: 'flex-start', marginLeft: '5%', color: '#666', marginBottom: 5 }}>Primary Goal:</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '90%', marginBottom: 20 }}>
+                
+                {['Build Muscle', 'Lose Weight', 'Maintain'].map((g) => (
+                <TouchableOpacity 
+                    key={g}
+                    style={{
+                    flex: 1,
+                    padding: 10,
+                    marginHorizontal: 5,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    backgroundColor: goal === g ? '#007AFF' : '#e0e0e0' // Highlights the selected one!
+                    }}
+                    onPress={() => setGoal(g)}
+                >
+                    <Text style={{ 
+                    fontSize: 12, 
+                    fontWeight: 'bold', 
+                    color: goal === g ? '#fff' : '#555' 
+                    }}>
+                    {g}
+                    </Text>
+                </TouchableOpacity>
+                ))}
+            </View>
+            
             <TextInput
                 style={styles.input}
                 placeholder="Username"
