@@ -163,7 +163,9 @@ export default function DiaryScreen() {
     const foodList = filteredLogs.map(log => log.foodName).join(', ');
     
     
-    const prompt = `Context: ${profileContext}Today I ate: ${foodList}. My total intake is ${totalCalories} calories and ${totalProtein}g of protein. Based on my weight and goal, give me 2 short sentences of specific advice.`;
+    const prompt = `Context: ${profileContext}I am tracking my nutrition. Today I ate: ${foodList}. 
+    My total intake is ${totalCalories} calories and ${totalProtein}g of protein, ${totalCarbs}g of carbs, and ${totalFat}g of fat. 
+    In 2 short sentences, tell me how I can improve this diet for better health and muscle growth.`;
 
     try {
     
