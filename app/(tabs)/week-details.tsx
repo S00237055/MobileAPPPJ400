@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiGet, apiPost } from '../../lib/api';
+import { getUserId } from '../../lib/auth';
 
 interface SavedFoodLog {
     logId: number;
@@ -25,11 +26,10 @@ export default function WeekDetailsScreen() {
         const fetchHistory = async () => {
             try {
 
-                const storedId = await AsyncStorage.getItem('userId');
-                if (!storedId) return;
+                const storedId = await getUserId();
+                if (storedId === null) return;
 
-                const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/FoodLogs/user/${storedId}`);
-                const data = await response.json();
+                const data = await apiGet(`/FoodLogs/user/${storedId}`);
                 setLogs(data);
             } catch (error) {
                 console.error('Error fetching food logs:', error);
@@ -80,17 +80,7 @@ export default function WeekDetailsScreen() {
         Compare my progress between the two weeks. Keep it to 3 short sentences, highlight the differences,  and suggest one specific improvement I can make next week.`;
 
         try {
-            const response = await fetch('https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/Ai/WeeklyComparison', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: prompt })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to get AI comparison');
-            }
-
-            const data = await response.json();
+            const data = await apiPost('/Ai/WeeklyComparison', { prompt: prompt });
             setAiAdvice(data.advice);
         } catch (error) {
             console.error('Error fetching AI comparison:', error);

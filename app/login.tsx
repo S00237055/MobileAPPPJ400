@@ -1,16 +1,15 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { View, Text, StyleSheet, Alert, Button, TextInput } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiFetch } from '../lib/api';
+import { saveSession } from '../lib/auth';
 
 
 export default function LoginScreen() {
   const router = useRouter();
-  
+
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
-
-  const API_URL = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/login';
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -19,30 +18,23 @@ export default function LoginScreen() {
     }
 
     try {
-      
-      const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ 
-        username: username, 
-        password: password,
-      }),
-    });
+      const userData = await apiFetch('/User/login', {
+        method: 'POST',
+        body: { username: username, password: password },
+        redirectOnUnauthorised: false,
+      });
 
-    if (response.ok) {
-      const userData = await response.json();
-      console.log('Login successful:', userData);
-      await AsyncStorage.setItem('userId', userData.userId.toString());
+      await saveSession(userData.token, userData.userId);
+
       // navigate to the main app
       router.replace('/(tabs)/workout');
-    } else {
-      Alert.alert('Login failed', 'Invalid username or password');
-    }
-    } catch (error) {
-      console.error('Error during login:', error);
-      Alert.alert('Error', 'An error occurred during login. Please try again later.');
+    } catch (error: any) {
+      if (error?.status === 401) {
+        Alert.alert('Login failed', 'Invalid username or password');
+      } else {
+        console.error('Error during login:', error);
+        Alert.alert('Error', 'An error occurred during login. Please try again later.');
+      }
     }
   };
 

@@ -16,7 +16,9 @@ import {
   View
 } from 'react-native';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiPost } from '../../lib/api';
+import { getUserId } from '../../lib/auth';
+import { fetchWithRetry, getSafetyStatus, resolveProductName } from '../../lib/metrics';
 
 interface FoodItem {
   id: string;
@@ -38,9 +40,9 @@ export default function NutritionScreen() {
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const storedId = await AsyncStorage.getItem('userId');
-        if (storedId) {
-          setCurrentUserId(parseInt(storedId)); // Updates with the REAL logged-in user
+        const storedId = await getUserId();
+        if (storedId !== null) {
+          setCurrentUserId(storedId); // Updates with the REAL logged-in user
         }
       } catch (error) {
         console.error('Error reading user ID from storage', error);
@@ -187,14 +189,15 @@ export default function NutritionScreen() {
 
   const saveToDatabase = async (item: any) => {
     
-    const foodName = item.product_name_en || item.product_name || 'Unknown Product';
+    const foodName = resolveProductName(item);
     const calories = parseInt(item.nutriments?.['energy-kcal_100g']) || 0;
     const protein = parseFloat(item.nutriments?.proteins_100g) || 0;
     const carbs = parseFloat(item.nutriments?.carbohydrates_100g) || 0;
     const fat = parseFloat(item.nutriments?.fat_100g) || 0;
     
     const payload = {
-      userId: currentUserId, // Change this to the ID of the logged-in user!
+      // The server takes the owner from the token and ignores this value.
+      userId: currentUserId,
       foodName: foodName,
       calories: calories,
       proteinGrams: protein,
@@ -203,23 +206,15 @@ export default function NutritionScreen() {
     };
 
     try {
-      
-      const response = await fetch('https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/FoodLogs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        Alert.alert('Success!', `${foodName} has been saved to your diary.`);
-      } else {
-        Alert.alert('Error', 'Failed to save food to database.');
-      }
-    } catch (error) {
+      await apiPost('/FoodLogs', payload);
+      Alert.alert('Success!', `${foodName} has been saved to your diary.`);
+    } catch (error: any) {
       console.error(error);
-      Alert.alert('Network Error', 'Could not connect to the Fitness API.');
+      if (error?.status) {
+        Alert.alert('Error', 'Failed to save food to database.');
+      } else {
+        Alert.alert('Network Error', 'Could not connect to the Fitness API.');
+      }
     }
   };
 
@@ -243,16 +238,6 @@ const handleBarCodeScanned = async ({ type, data }: { type: string; data: string
     Alert.alert("Error", "Could not connect to the food database.");
   } finally {
     setLoading(false);
-  }
-};
-
-const getSafetyStatus = (novaGroup: number) => {
-  switch (novaGroup) {
-    case 1: return { label: "✅ Natural / Unprocessed", color: "#4CAF50" };
-    case 2: return { label: "⚠️ Processed Culinary Ingredient", color: "#8BC34A" };
-    case 3: return { label: "⚠️ Processed Food", color: "#FFC107" };
-    case 4: return { label: "❌ Ultra-Processed", color: "#F44336" };
-    default: return { label: "❓ Unknown Processing Level", color: "#9E9E9E" };
   }
 };
 
@@ -426,22 +411,6 @@ const openScanner = () => {
     </View>
   );
 }
-
-const fetchWithRetry = async (url: string, options?: any, retries = 3, backoff = 1000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        throw new Error(`Server Error: ${response.status}`);
-      }
-      return await response.json();
-    } catch (err: any) {
-      if (i === retries - 1) throw err;
-      console.log(`API failed (${err.message}), retrying in ${backoff * (i + 1)}ms...`);
-      await new Promise(res => setTimeout(res, backoff * (i + 1))); 
-    }
-  }
-};
 
 const styles = StyleSheet.create({
   container: {

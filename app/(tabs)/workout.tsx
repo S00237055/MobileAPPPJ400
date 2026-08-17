@@ -4,8 +4,10 @@ import {
   Modal, StyleSheet, Alert, ScrollView, 
   Button, Image
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
+import { apiGet, apiPost } from '../../lib/api';
+import { getUserId } from '../../lib/auth';
+import { formatTime } from '../../lib/metrics';
 
 interface Exercise {
   exerciseId: number;
@@ -63,8 +65,6 @@ export default function WorkoutScreen() {
         .slice(0, 30);
 
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
-  const API_URL = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api'; 
-  const USER_ID = 1; 
 
 
   const params = useLocalSearchParams();
@@ -101,25 +101,16 @@ export default function WorkoutScreen() {
 }, [isTimerRunning, isWorkoutActive]);
 
 
-const formatTime = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-};
-
   const loadUserId = async () => {
-    const id = await AsyncStorage.getItem('userId');
-    if (id) {
-        setUserId(parseInt(id));
-    } else {
-        setUserId(USER_ID); 
-    }
+    // No hard-coded fallback: if there is no session the user is not logged in,
+    // and the API would reject the request anyway.
+    const id = await getUserId();
+    setUserId(id);
   };
 
   const fetchExercises = async () => {
     try {
-      const response = await fetch(`${API_URL}/Exercises`);
-      const data = await response.json();
+      const data = await apiGet('/Exercises');
       setAvailableExercises(data);
     } catch (error) {
       Alert.alert('Error', 'Could not load exercises');
@@ -163,6 +154,8 @@ const formatTime = (seconds: number) => {
     
 
     const payload = {
+      // The server takes the owner from the token and ignores this value, but
+      // it is left in place so the shape of the request is unchanged.
       userId: userId,
       date: new Date().toISOString(),
       notes: `Duration: ${formatTime(overallTimer)}`,
@@ -175,23 +168,18 @@ const formatTime = (seconds: number) => {
     };
 
     try {
-      const response = await fetch(`${API_URL}/Workouts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      await apiPost('/Workouts', payload);
 
-      if (response.ok) {
-        Alert.alert('Success', `Workout Saved! Total time: ${formatTime(overallTimer)}`);
-        setWorkoutSets([]); 
-        setSelectedExercise(null);
-        setOverallTimer(0);
-      } else {
-        const err = await response.text();
-        Alert.alert('Error', 'Failed to save: ' + err);
-      }
+      Alert.alert('Success', `Workout Saved! Total time: ${formatTime(overallTimer)}`);
+      setWorkoutSets([]);
+      setSelectedExercise(null);
+      setOverallTimer(0);
     } catch (error: any) {
-      Alert.alert('Network Error', error.message || 'Unknown error');
+      if (error?.status) {
+        Alert.alert('Error', 'Failed to save: ' + (error.body || error.message));
+      } else {
+        Alert.alert('Network Error', error.message || 'Unknown error');
+      }
     }
   };
 

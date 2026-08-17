@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity, Dimensions } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { BarChart } from 'react-native-chart-kit';
+import { apiGet, apiPost } from '../../lib/api';
+import { getUserId } from '../../lib/auth';
+import { calculateTotalReps, calculateVolume, parseDurationMinutes } from '../../lib/metrics';
 
 interface Workout {
   workoutId: number;
@@ -30,8 +32,6 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
   const [activeChart, setActiveChart] = useState<'Volume' | 'Reps' | 'Duration'>('Volume');
 
-  const API_URL = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api'; 
-
   const screenWidth = Dimensions.get("window").width;
 
   const [userProfile, setUserProfile] = useState<{ weight: number | null, goal: string | null } | null>(null);
@@ -47,32 +47,23 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
       setAiAdvice(null);
       setLoading(true);
       
-      const userIdStr = await AsyncStorage.getItem('userId');
-      if (!userIdStr) { setLoading(false); return; }
-      const myUserId = parseInt(userIdStr);
+      const myUserId = await getUserId();
+      if (myUserId === null) { setLoading(false); return; }
 
-      const profileResponse = await fetch(`${API_URL}/User/${myUserId}`);
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
+      try {
+        const profileData = await apiGet(`/User/${myUserId}`);
         setUserProfile({
           weight: profileData.currentWeight,
           goal: profileData.goalType
         });
-      }
-      // Fetch all workouts
-      const response = await fetch(`${API_URL}/Workouts`); 
-
-      if (!response.ok) {
-        
-        console.log("Server Error Code:", response.status);
-        throw new Error("Failed to fetch");
+      } catch {
+        // A missing profile should not stop the history from loading.
       }
 
-      const allWorkouts = await response.json();
+      // The endpoint now returns only the authenticated user's sessions, so no
+      // client-side filtering by user is needed.
+      const myWorkouts = await apiGet('/Workouts');
 
-      //Filter by my userId
-      const myWorkouts = allWorkouts.filter((w: Workout) => w.userId === myUserId);
-      
       // Sort by date
       myWorkouts.sort((a: Workout, b: Workout) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -115,26 +106,17 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
 
     while (attempt < maxAttempts && !success) {
       try {
-        const response = await fetch(`${API_URL}/Ai/WorkoutAdvice`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: prompt })
-        });
-        
-        if (!response.ok) {
-          if (response.status === 503 && attempt < maxAttempts - 1) {
-              throw new Error("503_RETRY");
-          }
-          
-          const errorText = await response.text();
-          throw new Error(errorText);
-        }
-
-        const data = await response.json();
+        const data = await apiPost('/Ai/WorkoutAdvice', { prompt: prompt });
         setAiAdvice(data.advice);
         success = true
 
       } catch (error: any) {
+        // 503 means the provider is temporarily overloaded, which is worth
+        // retrying. Any other status will not succeed on a retry.
+        if (error?.status === 503 && attempt < maxAttempts - 1) {
+          error = new Error("503_RETRY");
+        }
+
         if (error.message === "503_RETRY") {
             attempt++;
             console.log(`AI Busy. Retrying... Attempt ${attempt} of ${maxAttempts}`);
@@ -199,28 +181,12 @@ const [aiAdvice, setAiAdvice] = useState<string | null>(null);
     });
 
     
-    const volumeData = recentWorkouts.map(w => 
-      w.workoutSets.reduce((sum, set) => sum + (set.weightKg * set.reps), 0)
-    );
-
-    
-    const repsData = recentWorkouts.map(w => 
-      w.workoutSets.reduce((sum, set) => sum + set.reps, 0)
-    );
-
-    const durationData = recentWorkouts.map(w => {
-      if (w.notes && w.notes.includes('Duration:')) {
-        const match = w.notes.match(/Duration: (\d+):(\d+)/);
-        if (match) {
-          const mins = parseInt(match[1]);
-          const secs = parseInt(match[2]);
-          const totalMins = mins + (secs / 60);
-
-          return Math.max(1, Math.ceil(totalMins));
-        }
-      }
-      return 0; // Fallback to 0 if no duration was recorded
-    });
+    // The three chart metrics are derived from stored session data rather than
+    // persisted separately. Calculations live in lib/metrics so they are unit
+    // tested independently of this screen.
+    const volumeData = recentWorkouts.map(w => calculateVolume(w.workoutSets));
+    const repsData = recentWorkouts.map(w => calculateTotalReps(w.workoutSets));
+    const durationData = recentWorkouts.map(w => parseDurationMinutes(w.notes));
 
     const dataToDisplay = activeChart === 'Volume' ? volumeData : activeChart === 'Reps' ? repsData : durationData;
     const chartColor = activeChart === 'Volume' ? '#007AFF' : activeChart === 'Reps' ? '#FF9500' : '#34C759';

@@ -1,6 +1,8 @@
 import React, {useState} from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { apiFetch } from '../lib/api';
+import { saveSession } from '../lib/auth';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -27,31 +29,29 @@ export default function RegisterScreen() {
     setErrorMessage('');
 
 
-    const backendUrl = 'https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/register';
     try {
-      const response = await fetch(backendUrl, {
+      const data = await apiFetch('/User/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+        body: {
+            username,
+            password,
+            currentWeight: weight ? parseFloat(weight) : null,
+            goalType: goal
         },
-        body: JSON.stringify({
-            username, 
-            password, 
-            currentWeight: weight ? parseFloat(weight) : null, 
-            goalType: goal 
-        }),
+        redirectOnUnauthorised: false,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        Alert.alert("Success", "Account created successfully!");
-      } else {
-        const errorText = await response.text();
-        setErrorMessage(errorText || "Registration failed. Please try again.");
+      await saveSession(data.token, data.userId);
+
+      Alert.alert("Success", "Account created successfully!");
+      router.replace('/(tabs)');
+    } catch (error: any) {
+        if (error?.status) {
+          setErrorMessage(error.body || "Registration failed. Please try again.");
+        } else {
+          setErrorMessage("Could not connect to the server. Is your backend running?");
+          console.error(error);
         }
-    }catch (error) {
-        setErrorMessage("Could not connect to the server. Is your backend running?");
-        console.error(error);
         } finally {
         setIsLoading(false);
         }

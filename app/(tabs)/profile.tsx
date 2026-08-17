@@ -3,7 +3,8 @@ import { ThemedView } from '@/components/themed-view';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiGet, apiPut } from '../../lib/api';
+import { clearSession, getUserId } from '../../lib/auth';
 interface UserProfile {
   userId: number;
   username: string;
@@ -26,9 +27,9 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     const loadProfile = async () => {
-      const storedId = await AsyncStorage.getItem('userId');
-      if (storedId) {
-        setCurrentUserId(parseInt(storedId));
+      const storedId = await getUserId();
+      if (storedId !== null) {
+        setCurrentUserId(storedId);
       }
     };
     loadProfile();
@@ -42,10 +43,7 @@ export default function ProfileScreen() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/${currentUserId}`);
-      if (!response.ok) throw new Error('Failed to fetch user data');
-
-      const data = await response.json();
+      const data = await apiGet(`/User/${currentUserId}`);
       setUser(data);
       setEditWeight(data.currentWeight ? data.currentWeight.toString() : '');
       setEditGoal(data.goalType || '');
@@ -59,20 +57,11 @@ export default function ProfileScreen() {
 
   const handleSaveProfile = async () => {
     try {
-      const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/${currentUserId}/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          currentWeight: editWeight ? parseFloat(editWeight) : null,
-          goalType: editGoal ? editGoal : null,
-        }),
+      const updatedUser = await apiPut(`/User/${currentUserId}/profile`, {
+        currentWeight: editWeight ? parseFloat(editWeight) : null,
+        goalType: editGoal ? editGoal : null,
       });
 
-      if (!response.ok) throw new Error('Failed to update profile');
-
-      const updatedUser = await response.json();
       setUser(updatedUser);
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully!');
@@ -82,7 +71,8 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await clearSession();
     Alert.alert('Logged Out', 'You have been successfully logged out.');
     router.replace('/login');
   };

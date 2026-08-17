@@ -3,7 +3,9 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, 
 import { Dimensions } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiGet, apiPost } from '../../lib/api';
+import { getUserId } from '../../lib/auth';
+import { aggregateByWeek, sumMacros } from '../../lib/metrics';
 
 interface SavedFoodLog {
   logId: number;
@@ -37,13 +39,7 @@ export default function DiaryScreen() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/FoodLogs/user/${currentUserId}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const data = await response.json();
+      const data = await apiGet(`/FoodLogs/user/${currentUserId}`);
       setLogs(data);
     } catch (err) {
       setError('Could not connect to database to fetch history.');
@@ -56,20 +52,15 @@ export default function DiaryScreen() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const storedId = await AsyncStorage.getItem('userId');
-        if (storedId) {
-          const myId = parseInt(storedId);
+        const myId = await getUserId();
+        if (myId !== null) {
           setCurrentUserId(myId);
 
-          
-          const response = await fetch(`https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/User/${myId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setUserProfile({
-              weight: data.currentWeight,
-              goal: data.goalType
-            });
-          }
+          const data = await apiGet(`/User/${myId}`);
+          setUserProfile({
+            weight: data.currentWeight,
+            goal: data.goalType
+          });
         }
       } catch (error) {
         console.error('Error fetching user data', error);
@@ -107,30 +98,9 @@ export default function DiaryScreen() {
 
   const filteredLogs = getFilteredLogs();
 
-  const getWeeklyComparisons = () => {
-    const weeklyData: Record<string, { weekStart: string, rawDate: string,calories: number, protein: number, carbs: number, fat: number }> = {};
-      
-    logs.forEach(log => {
-      const date = new Date(log.dateEaten);
-      const day = date.getDay() || 7;
-      date.setHours(-24 * (day -1), 0, 0, 0);
-      const weekStart = date.toLocaleDateString();
-
-      if (!weeklyData[weekStart]) {
-        weeklyData[weekStart] = { weekStart, rawDate: date.toISOString(), calories: 0, protein: 0, carbs: 0, fat: 0 };
-      }
-      weeklyData[weekStart].calories += log.calories;
-      weeklyData[weekStart].protein += log.proteinGrams;
-      weeklyData[weekStart].carbs += log.carbsGrams || 0; 
-      weeklyData[weekStart].fat += log.fatGrams || 0;
-    });
-
-    return Object.values(weeklyData).sort((a, b) => 
-      new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
-    );
-  };
-
-    const weeklyComparisons = getWeeklyComparisons();
+  // Grouping and summing live in lib/metrics so they can be unit tested
+  // without rendering this screen.
+  const weeklyComparisons = aggregateByWeek(logs);
   
 
   
@@ -140,10 +110,8 @@ export default function DiaryScreen() {
     
 
   //SUMMARY
-  const totalCalories = filteredLogs.reduce((sum, log) => sum + log.calories, 0);
-  const totalProtein = filteredLogs.reduce((sum, log) => sum + log.proteinGrams, 0);
-  const totalCarbs = filteredLogs.reduce((sum, log) => sum + (log.carbsGrams || 0), 0);
-  const totalFat = filteredLogs.reduce((sum, log) => sum + (log.fatGrams || 0), 0);
+  const { calories: totalCalories, protein: totalProtein, carbs: totalCarbs, fat: totalFat } =
+    sumMacros(filteredLogs);
 
   const getAiDietAdvice = async () => {
     if (filteredLogs.length === 0) {
@@ -170,27 +138,13 @@ export default function DiaryScreen() {
     try {
     
       
-      const response = await fetch('https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net/api/Ai/DietAdvice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("BACKEND ERROR:", errorText); 
-        throw new Error(errorText);
-      }
+      const data = await apiPost('/Ai/DietAdvice', { prompt: prompt });
 
-     
-      const data = await response.json();
-      
-      
       setAiAdvice(data.advice);
 
     } catch (error: any) {
-      Alert.alert("AI Error", error.message || "Could not get advice right now.");
-      Alert.alert("AI Error", "Could not get advice.");
+      console.error("AI ERROR:", error);
+      Alert.alert("AI Error", "Could not get advice right now. Please try again shortly.");
   } finally {
     
     setAiLoading(false);

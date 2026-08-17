@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isLoggedIn } from '../lib/auth';
 
 export default function AuthGateway() {
   const router = useRouter();
@@ -9,14 +9,11 @@ export default function AuthGateway() {
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
-        
-        const userId = await AsyncStorage.getItem('userId');
-        
-        if (userId) {
-          
-          router.replace('/(tabs)'); 
+        const loggedIn = await isLoggedIn();
+
+        if (loggedIn) {
+          router.replace('/(tabs)');
         } else {
-          
           router.replace('/login');
         }
       } catch (error) {
