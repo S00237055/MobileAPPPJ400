@@ -40,7 +40,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Fitness App Login</Text>
+      <Text style={styles.title}>Fuel Track</Text>
       
       <TextInput
         style={styles.input}

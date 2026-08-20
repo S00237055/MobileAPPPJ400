@@ -1,50 +1,88 @@
-# Welcome to your Expo app 👋
+# Fuel Track
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The mobile app for my fitness tracking project. Built with React Native and Expo.
 
-## Get started
+It talks to my FitnessAPI backend, which is in a separate repo and deployed to
+Azure.
 
-1. Install dependencies
+## What's in it
 
-   ```bash
-   npm install
-   ```
+- Login and registration
+- Workout logging with a rest timer and a searchable exercise list
+- Barcode scanning for food, using the phone camera and Open Food Facts
+- A food diary with daily, weekly and monthly views, and charts
+- Workout history with volume, reps and duration charts
+- AI coaching on both diet and training
+- Profile editing
 
-2. Start the app
+## Requirements
 
-   ```bash
-   npx expo start
-   ```
+- Node.js
+- The Expo Go app on your phone, or an Android emulator
 
-In the output, you'll find options to open the app in a
+## Running it
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Then scan the QR code with Expo Go.
 
-## Learn more
+If your phone can't connect (this happens on university or hotel wifi, or if
+your phone is on mobile data), use tunnel mode instead:
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+npx expo start --tunnel
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+You don't need to run the backend locally. The app points at the deployed API on
+Azure.
 
-## Join the community
+## Tests
 
-Join our community of developers creating universal apps.
+15 tests using Jest. They cover the calculation logic in `lib/metrics.ts`, which
+is where the weekly food totals, training volume and duration parsing live.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+npm test
+```
+
+With coverage:
+
+```
+npm run test:coverage
+```
+
+## Building an APK
+
+I used EAS Build to make a standalone Android app that runs without the Expo
+development server.
+
+```
+npm install -g eas-cli
+eas login
+eas build -p android --profile preview
+```
+
+The build runs on Expo's servers and takes about 15 to 25 minutes. When it's
+done you get a download link. Open it on your phone, download the APK and
+install it. Android will warn you about installing from an unknown source, which
+you need to allow.
+
+The build settings are in `eas.json`. The `preview` profile is the one that
+produces an APK.
+
+## Project structure
+
+```
+app/            screens, using Expo Router file based routing
+  (tabs)/       the main tabbed screens
+lib/            api client, session storage and calculation logic
+components/     shared UI components
+__tests__/      Jest tests
+```
+
+Authentication tokens are stored using expo-secure-store, which uses the Android
+keystore, rather than plain storage. The token is attached to every API request
+by the wrapper in `lib/api.ts`, so individual screens don't have to deal with it.
